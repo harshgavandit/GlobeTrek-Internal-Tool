@@ -1,0 +1,1 @@
+import { clearSession } from '@/lib/auth';import { checkOrigin,ok,fail } from '@/lib/api';export async function POST(req:Request){try{checkOrigin(req);await clearSession();return ok(null);}catch(e){return fail(e);}}

@@ -1,0 +1,277 @@
+- link:
+  - /url: "#main-content"
+  - text: Skip to content
+- banner:
+  - button:
+  - navigation:
+    - link:
+      - /url: /quotations
+      - text: Quotations
+    - generic: Create Quotation
+  - button:
+- main:
+  - paragraph: Quotations
+  - heading [level=1]: New Quotation
+  - paragraph: Choose your customer, add products, and review the total.
+  - button:
+    - text: Preview
+  - button:
+    - text: Save Quotation
+  - heading [level=2]: Customer
+  - button:
+    - text: New
+  - combobox:
+    - generic: UI Acceptance 1788205292163
+  - paragraph: Quotation reviewer · India
+  - heading [level=2]: Pricing context
+  - generic: USD
+  - generic: Pricing Schedule
+  - combobox
+  - paragraph: Changing lists replaces master and quoted prices for all items.
+  - text: Quotation Date
+  - textbox: 2026-09-01
+  - text: Valid Until
+  - textbox: 2026-10-01
+  - paragraph: A unique quotation number is assigned when saved.
+  - heading [level=2]: Search & Add Products
+  - paragraph: Add from the catalog, then adjust quantity and quoted price.
+  - combobox [expanded]: Compression
+  - button:
+  - combobox
+  - button:
+  - listbox:
+    - option [selected]:
+      - paragraph: Compression Testing Machine
+      - paragraph: TEST-CTM-1788184053012 · Acceptance 1788184053012
+      - paragraph: Master price
+      - paragraph: Not priced
+      - button [disabled]:
+    - option:
+      - paragraph: Compression Testing Machine
+      - paragraph: TEST-CTM-1788190386911 · Acceptance 1788190386911
+      - paragraph: Master price
+      - paragraph: $2,700.00
+      - button [disabled]:
+    - option:
+      - paragraph: Compression Testing Machine
+      - paragraph: TEST-CTM-1788200241076 · Acceptance 1788200241076
+      - paragraph: Master price
+      - paragraph: Not priced
+      - button [disabled]:
+    - option:
+      - paragraph: Compression Testing Machine
+      - paragraph: TEST-CTM-1788201508220 · Acceptance 1788201508220
+      - paragraph: Master price
+      - paragraph: Not priced
+      - button [disabled]:
+    - option:
+      - paragraph: Compression Testing Machine
+      - paragraph: TEST-CTM-1788201994501 · Acceptance 1788201994501
+      - paragraph: Master price
+      - paragraph: Not priced
+      - button [disabled]:
+    - option:
+      - paragraph: Compression Testing Machine
+      - paragraph: TEST-CTM-1788202516574 · Acceptance 1788202516574
+      - paragraph: Master price
+      - paragraph: Not priced
+      - button [disabled]:
+  - paragraph: Showing 6 of 7. Refine your search. Use ↑ ↓ to choose a result and Enter to add. Prices are checked again when saving.
+  - heading [level=2]: Selected products
+  - generic: 4 items · USD
+  - paragraph: CBR
+  - generic: TEST-CBR-1788190386911
+  - button: Edit description
+  - generic: Quantity
+  - spinbutton: "2"
+  - generic: Master price
+  - text: $825.00
+  - generic: Quoted price
+  - spinbutton: "825"
+  - generic: Variance
+  - generic: 0.00%
+  - generic: Discount %
+  - spinbutton: "0"
+  - generic: Amount
+  - text: $1,650.00
+  - button:
+  - paragraph: Marshall
+  - generic: TEST-MAR-1788190386911
+  - button: Edit description
+  - generic: Quantity
+  - spinbutton: "1"
+  - generic: Master price
+  - text: $1,750.00
+  - generic: Quoted price
+  - spinbutton: "1750"
+  - generic: Variance
+  - generic: 0.00%
+  - generic: Discount %
+  - spinbutton: "0"
+  - generic: Amount
+  - text: $1,750.00
+  - button:
+  - paragraph: Test Sieve
+  - generic: TEST-SIEVE-1788190386911
+  - button: Edit description
+  - generic: Quantity
+  - spinbutton: "10"
+  - generic: Master price
+  - text: $55.00
+  - generic: Quoted price
+  - spinbutton: "55"
+  - generic: Variance
+  - generic: 0.00%
+  - generic: Discount %
+  - spinbutton: "0"
+  - generic: Amount
+  - text: $550.00
+  - button:
+  - paragraph: Compression Testing Machine
+  - generic: TEST-CTM-1788190386911
+  - button: Edit description
+  - generic: Quantity
+  - spinbutton: "1"
+  - generic: Master price
+  - text: $2,700.00
+  - generic: Quoted price
+  - spinbutton: "2700"
+  - generic: Variance
+  - generic: 0.00%
+  - generic: Discount %
+  - spinbutton: "0"
+  - generic: Amount
+  - text: $2,700.00
+  - button:
+  - generic: Commercial terms & notes Review defaults
+  - complementary:
+    - heading [level=2]: Quotation Summary
+    - paragraph: Acceptance USD 1788190386911 · USD
+    - generic: Subtotal
+    - strong: $6,650.00
+    - generic: Discount
+    - spinbutton: "0"
+    - generic: Packing
+    - spinbutton: "150"
+    - generic: Freight
+    - spinbutton: "450"
+    - generic: Insurance
+    - spinbutton: "50"
+    - generic: Other charges
+    - spinbutton: "0"
+    - generic: GST / Tax (%)
+    - spinbutton: "0"
+    - generic: Tax amount (0%)
+    - generic: $0.00
+    - generic: Grand Total
+    - strong: $7,300.00
+    - paragraph: Seven Thousand Three Hundred US Dollars Only
+  - text: Grand Total
+  - strong: $7,300.00
+  - link:
+    - /url: "#quotation-summary"
+    - text: Review summary ↑
+- region "Notifications alt+T"
+- alert
+- dialog "Quotation Preview":
+  - heading "Quotation Preview" [level=2]
+  - paragraph: Unsaved preview. Review the customer, prices, and terms before saving.
+  - generic: G
+  - heading "Globetrek Engineering" [level=2]
+  - paragraph
+  - paragraph: "| Email: | GSTIN:"
+  - generic: PROFORMA QUOTATION
+  - generic: PREVIEW - NOT SAVED
+  - generic: "Date: 01 Sept 2026"
+  - generic: "Valid Till: 01 Oct 2026"
+  - generic: "QUOTATION ISSUED TO:"
+  - generic: UI Acceptance 1788205292163
+  - generic: "Attn: Quotation reviewer"
+  - generic: "COMMERCIAL DETAILS:"
+  - generic: "Price List:"
+  - generic: Acceptance USD 1788190386911
+  - generic: "Currency:"
+  - generic: USD
+  - generic: "Prepared By:"
+  - generic: Acceptance Administrator
+  - generic: "Payment Terms:"
+  - table "Quotation line items":
+    - rowgroup:
+      - row "# Equipment Description & Specifications Qty Unit Price (USD) Disc % Total (USD)":
+        - columnheader "#"
+        - columnheader "Equipment Description & Specifications"
+        - columnheader "Qty"
+        - columnheader "Unit Price (USD)"
+        - columnheader "Disc %"
+        - columnheader "Total (USD)"
+    - rowgroup:
+      - 'row "1 CBR Code: TEST-CBR-1788190386911 Imported spec 2 $825.00 — $1,650.00"':
+        - cell "1"
+        - 'cell "CBR Code: TEST-CBR-1788190386911 Imported spec"':
+          - generic: CBR
+          - generic: "Code: TEST-CBR-1788190386911"
+          - paragraph: Imported spec
+        - cell "2"
+        - cell "$825.00"
+        - cell "—"
+        - cell "$1,650.00"
+      - 'row "2 Marshall Code: TEST-MAR-1788190386911 Marshall acceptance specification 1 $1,750.00 — $1,750.00"':
+        - cell "2"
+        - 'cell "Marshall Code: TEST-MAR-1788190386911 Marshall acceptance specification"':
+          - generic: Marshall
+          - generic: "Code: TEST-MAR-1788190386911"
+          - paragraph: Marshall acceptance specification
+        - cell "1"
+        - cell "$1,750.00"
+        - cell "—"
+        - cell "$1,750.00"
+      - 'row "3 Test Sieve Code: TEST-SIEVE-1788190386911 Test Sieve acceptance specification 10 $55.00 — $550.00"':
+        - cell "3"
+        - 'cell "Test Sieve Code: TEST-SIEVE-1788190386911 Test Sieve acceptance specification"':
+          - generic: Test Sieve
+          - generic: "Code: TEST-SIEVE-1788190386911"
+          - paragraph: Test Sieve acceptance specification
+        - cell "10"
+        - cell "$55.00"
+        - cell "—"
+        - cell "$550.00"
+      - 'row "4 Compression Testing Machine Code: TEST-CTM-1788190386911 Compression Testing Machine acceptance specification 1 $2,700.00 — $2,700.00"':
+        - cell "4"
+        - 'cell "Compression Testing Machine Code: TEST-CTM-1788190386911 Compression Testing Machine acceptance specification"':
+          - generic: Compression Testing Machine
+          - generic: "Code: TEST-CTM-1788190386911"
+          - paragraph: Compression Testing Machine acceptance specification
+        - cell "1"
+        - cell "$2,700.00"
+        - cell "—"
+        - cell "$2,700.00"
+  - generic: Subtotal
+  - generic: $6,650.00
+  - generic: Discount
+  - generic: $0.00
+  - generic: Packaging & Forwarding
+  - generic: $150.00
+  - generic: Freight Charges
+  - generic: $450.00
+  - generic: Transit Insurance
+  - generic: $50.00
+  - generic: Grand Total (USD)
+  - generic: $7,300.00
+  - generic: "Amount in Words: Seven Thousand Three Hundred US Dollars Only"
+  - generic: "TERMS & CONDITIONS:"
+  - list:
+    - listitem: "Payment Terms:"
+    - listitem: "Delivery Period:"
+    - listitem: "Warranty:"
+    - listitem: "Quotation Validity: 30 Days"
+    - listitem: "Dispatch Terms:"
+  - generic: "BANK & WIRE DETAILS:"
+  - generic: "Bank:"
+  - generic: "A/C Name:"
+  - generic: "A/C No:"
+  - generic: "IFSC:"
+  - generic: This is a computer-generated quotation.
+  - generic: For Globetrek Engineering
+  - generic: Authorized Signatory
+  - button "Close" [active]:
+    - generic: Close

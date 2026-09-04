@@ -1,0 +1,39 @@
+"use client";
+
+import React from 'react';
+import { AlertCircle, ArrowRight, Inbox, Loader2, Search, X, type LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+export function PageHeader({title,description,eyebrow,actions,children}:{title:React.ReactNode;description?:string;eyebrow?:string;actions?:React.ReactNode;children?:React.ReactNode}){
+ return <div className="page-header"><div className="min-w-0">{eyebrow&&<p className="eyebrow mb-2">{eyebrow}</p>}<h1 className="text-page-title">{title}</h1>{description&&<p className="text-page-description mt-1.5 max-w-2xl">{description}</p>}{children}</div>{actions&&<div className="page-actions">{actions}</div>}</div>;
+}
+export function SectionHeader({title,description,actions,icon:Icon}:{title:string;description?:string;actions?:React.ReactNode;icon?:LucideIcon}){
+ return <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3">{Icon&&<Icon className="size-4 text-muted-foreground"/>}<div><h2 className="text-sm font-semibold">{title}</h2>{description&&<p className="text-xs text-muted-foreground mt-1">{description}</p>}</div></div>{actions}</div>;
+}
+export const SearchInput=React.forwardRef<HTMLInputElement, Omit<React.ComponentProps<typeof Input>,'onChange'> & {onValueChange:(value:string)=>void}>(({onValueChange,className,value,placeholder='Search…',...props},ref)=><div className={cn('relative min-w-0',className)}><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/><Input ref={ref} {...props} aria-label={props['aria-label']||placeholder} placeholder={placeholder} value={value} onChange={e=>onValueChange(e.target.value)} className="pl-9 pr-9"/>{value&&<button type="button" aria-label="Clear search" onClick={()=>onValueChange('')} className="absolute right-1 top-1 rounded-md p-1.5 text-muted-foreground hover:bg-muted"><X className="size-4"/></button>}</div>);
+SearchInput.displayName='SearchInput';
+export function EmptyState({title='Nothing here yet',description,icon:Icon=Inbox,action,compact=false}:{title?:string;description:string;icon?:LucideIcon;action?:React.ReactNode;compact?:boolean}){
+ return <div className={cn('flex flex-col items-center justify-center px-6 text-center',compact?'py-8':'py-14')}><div className="mb-4 flex size-11 items-center justify-center rounded-xl border bg-muted/40 text-muted-foreground"><Icon className="size-5"/></div><h3 className="text-sm font-semibold">{title}</h3><p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">{description}</p>{action&&<div className="mt-5">{action}</div>}</div>;
+}
+export function LoadingState({label='Loading workspace',rows=5}:{label?:string;rows?:number}){
+ return <div role="status" aria-label={label} className="space-y-4 p-5"><span className="sr-only">{label}</span>{Array.from({length:rows},(_,i)=><div key={i} className="flex gap-4"><div className="skeleton h-9 w-9"/><div className="flex-1 space-y-2"><div className="skeleton h-3 w-2/5"/><div className="skeleton h-3 w-3/5"/></div><div className="skeleton h-4 w-20"/></div>)}</div>;
+}
+export function InlineError({message,onRetry,onDismiss}:{message?:string;onRetry?:()=>void;onDismiss?:()=>void}){
+ if(!message)return null;
+ return <div role="alert" className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><AlertCircle className="mt-0.5 size-4 shrink-0"/><div className="min-w-0 flex-1"><p className="font-medium break-words">{message}</p><p className="mt-1 text-xs">Your inputs are preserved. Check the details and try again.</p>{onRetry&&<Button type="button" variant="link" size="sm" onClick={onRetry} className="mt-1 h-7 px-0 text-red-800">Try again <ArrowRight className="size-3"/></Button>}</div>{onDismiss&&<button aria-label="Dismiss error" onClick={onDismiss} className="rounded p-1"><X className="size-4"/></button>}</div>;
+}
+export function FormField({label,hint,error,children,className}:{label:string;hint?:string;error?:string;children:React.ReactElement<{id?:string;'aria-describedby'?:string;'aria-invalid'?:boolean}>;className?:string}){
+ const uid=React.useId(),id=children.props.id||uid;
+ return <div className={cn('space-y-1.5 min-w-0',className)}><label htmlFor={id} className="text-[13px] font-medium text-foreground">{label}</label>{React.cloneElement(children,{id,'aria-describedby':error||hint?id+'-help':children.props['aria-describedby'],'aria-invalid':!!error})}{(error||hint)&&<p id={id+'-help'} className={cn('text-xs leading-relaxed',error?'text-red-700':'text-muted-foreground')}>{error||hint}</p>}</div>;
+}
+const statusStyles:Record<string,string>={draft:'bg-slate-100 text-slate-600',sent:'bg-blue-50 text-blue-700',accepted:'bg-emerald-50 text-emerald-700',rejected:'bg-red-50 text-red-700',active:'bg-emerald-50 text-emerald-700',archived:'bg-slate-100 text-slate-600',new:'bg-emerald-50 text-emerald-700',price_update:'bg-amber-50 text-amber-800',details_update:'bg-blue-50 text-blue-700',unchanged:'bg-slate-100 text-slate-600',error:'bg-red-50 text-red-700'};
+export function StatusBadge({status,label}:{status:string;label?:string}){return <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-medium capitalize',statusStyles[status]||statusStyles.draft)}><span aria-hidden className="size-1.5 rounded-full bg-current opacity-70"/>{label||status.replaceAll('_',' ')}</span>;}
+export function StatCard({label,value,description,icon:Icon,loading}:{label:string;value:number;description:string;icon:LucideIcon;loading?:boolean}){return <div className="surface p-5"><div className="flex items-center justify-between"><p className="text-[13px] text-muted-foreground">{label}</p><Icon className="size-4 text-muted-foreground"/></div>{loading?<div className="skeleton my-3 h-7 w-14"/>:<p className="my-2 text-[28px] font-semibold tracking-tight tabular-nums">{value.toLocaleString()}</p>}<p className="text-xs text-muted-foreground">{description}</p></div>;}
+export function ConfirmationDialog({open,onOpenChange,title,description,confirmLabel='Confirm',onConfirm,destructive=true}:{open:boolean;onOpenChange:(value:boolean)=>void;title:string;description:string;confirmLabel?:string;onConfirm:()=>Promise<void>|void;destructive?:boolean}){
+ const [busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+ React.useEffect(()=>{if(open)setError('');},[open]);
+ return <Dialog open={open} onOpenChange={v=>{if(!busy)onOpenChange(v);}}><DialogContent className="sm:max-w-md" onEscapeKeyDown={e=>{if(busy)e.preventDefault();}} onPointerDownOutside={e=>{if(busy)e.preventDefault();}}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><InlineError message={error}/><DialogFooter><Button variant="outline" disabled={busy} onClick={()=>onOpenChange(false)}>Cancel</Button><Button variant={destructive?'destructive':'default'} disabled={busy} onClick={async()=>{setBusy(true);try{await onConfirm();onOpenChange(false);}catch(e){setError(e instanceof Error?e.message:'The action failed. Please retry.');}finally{setBusy(false);}}}>{busy&&<Loader2 className="size-4 animate-spin"/>}{busy?'Please wait…':confirmLabel}</Button></DialogFooter></DialogContent></Dialog>;
+}

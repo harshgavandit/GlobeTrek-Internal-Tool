@@ -1,0 +1,6 @@
+export interface ImportDiffItem {rowNumber:number;sku:string;name:string;model_number?:string;category?:string;description?:string;action:'new'|'price_update'|'details_update'|'unchanged'|'error';changes:string[];prices:Record<string,number>;errorMessage?:string;}
+export interface ImportDiffsSummary {previewId?:string;totalRows:number;newProducts:number;priceUpdates:number;detailUpdates:number;unchanged:number;errors:number;items:ImportDiffItem[];}
+async function response(res:Response){const j=await res.json();if(!res.ok)throw new Error(j.error||'Import failed');return j.data;}
+export async function parseExcelPriceList(buffer:ArrayBuffer):Promise<ImportDiffsSummary>{return response(await fetch('/api/imports',{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},body:buffer}));}
+export async function applyImportDiffs(summary:ImportDiffsSummary):Promise<{newCount:number;updatedCount:number}>{return response(await fetch('/api/imports',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({previewId:summary.previewId})}));}
+export async function generateSampleExcelBuffer():Promise<ArrayBuffer>{const res=await fetch('/api/imports');if(!res.ok)await response(res);return res.arrayBuffer();}

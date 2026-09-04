@@ -1,0 +1,7 @@
+npm notice run globetrek-quotation-system@1.0.0 test:extended
+npm notice run tsx scripts/extended-integration.ts
+PASS malformed objects, oversized JSON and overlong UTF-8 passwords rejected
+PASS expired sessions and deactivated accounts lose API access immediately
+PASS PostgreSQL login throttle rejects the eleventh attempt
+PASS competing Product Master edits reject the stale version
+PASS fractional decimal calculation and long Unicode saved exports preserve model, text and numeric cells

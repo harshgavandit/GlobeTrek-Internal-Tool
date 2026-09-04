@@ -1,0 +1,2 @@
+npm notice run globetrek-quotation-system@1.0.0 lint
+npm notice run eslint src tests scripts

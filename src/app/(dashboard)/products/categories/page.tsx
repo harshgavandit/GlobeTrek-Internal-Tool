@@ -1,0 +1,24 @@
+"use client";
+import React from 'react';
+import Link from 'next/link';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter } from '@/components/ui/dialog';
+import { PageHeader,SearchInput,InlineError,FormField,ConfirmationDialog } from '@/components/workspace/primitives';
+import { DataTable,DataColumn } from '@/components/workspace/data-table';
+import { useAsyncData } from '@/lib/ui-hooks';
+import { db } from '@/lib/db';
+import { Category,Product } from '@/types';
+import { toast } from 'sonner';
+export default function CategoriesPage(){
+ const {data,loading,error,reload}=useAsyncData(async()=>{const [categories,products]=await Promise.all([db.fetchCategories(),db.fetchProducts()]);return {categories,products};},{categories:[] as Category[],products:[] as Product[]});
+ const [query,setQuery]=React.useState('');const [open,setOpen]=React.useState(false);const [editing,setEditing]=React.useState<Category|null>(null);const [deleting,setDeleting]=React.useState<Category|null>(null);const [name,setName]=React.useState('');const [description,setDescription]=React.useState('');const [saving,setSaving]=React.useState(false);const [formError,setFormError]=React.useState('');
+ function edit(c:Category|null){setEditing(c);setName(c?.name||'');setDescription(c?.description||'');setFormError('');setOpen(true);}
+ async function save(e:React.FormEvent){e.preventDefault();setSaving(true);setFormError('');try{const values={name:name.trim(),description:description.trim()};if(editing)await db.updateCategory(editing.id,values);else await db.createCategory(values);await reload();setOpen(false);toast.success(editing?'Category updated':'Category created');}catch(e){setFormError(e instanceof Error?e.message:'Could not save category.');}finally{setSaving(false);}}
+ const rows=React.useMemo(()=>data.categories.filter(c=>`${c.name} ${c.description||''}`.toLowerCase().includes(query.toLowerCase())),[data,query]);
+ const count=(id:string)=>data.products.filter(p=>p.category_id===id).length;
+ const columns:DataColumn<Category>[]=[{key:'name',label:'Category',sortValue:c=>c.name,cell:c=><span className="font-medium">{c.name}</span>},{key:'description',label:'Description',cell:c=><span className="text-muted-foreground">{c.description||'—'}</span>},{key:'products',label:'Products',align:'right',sortValue:c=>count(c.id),cell:c=>count(c.id)},{key:'actions',label:'Actions',align:'right',cell:c=><div className="flex justify-end gap-1"><Button variant="ghost" size="icon" aria-label={`Edit ${c.name}`} onClick={()=>edit(c)}><Pencil className="h-4 w-4"/></Button><Button variant="ghost" size="icon" aria-label={`Delete ${c.name}`} onClick={()=>setDeleting(c)}><Trash2 className="h-4 w-4 text-muted-foreground"/></Button></div>}];
+ return <div className="space-y-5"><PageHeader eyebrow="Product catalog" title="Categories" description="Keep products easy to find with clear, consistent groups." actions={<><Button variant="outline" asChild><Link href="/products">View Products</Link></Button><Button onClick={()=>edit(null)}><Plus className="mr-2 h-4 w-4"/>Add Category</Button></>}/><InlineError message={error} onRetry={reload}/><div className="surface"><div className="table-toolbar"><SearchInput value={query} onValueChange={setQuery} placeholder="Search categories…" className="sm:max-w-sm"/></div><DataTable label="categories" data={rows} columns={columns} rowKey={c=>c.id} loading={loading} emptyTitle="No categories found" emptyDescription="Create a category or adjust your search."/></div><Dialog open={open} onOpenChange={v=>!saving&&setOpen(v)}><DialogContent><DialogHeader><DialogTitle>{editing?'Edit Category':'Add Category'}</DialogTitle><DialogDescription>Use a name your team can quickly recognize.</DialogDescription></DialogHeader><form onSubmit={save} className="space-y-4"><InlineError message={formError}/><FormField label="Category name *"><Input value={name} onChange={e=>setName(e.target.value)} required disabled={saving}/></FormField><FormField label="Description"><Textarea value={description} onChange={e=>setDescription(e.target.value)} rows={3} disabled={saving}/></FormField><DialogFooter><Button type="button" variant="outline" disabled={saving} onClick={()=>setOpen(false)}>Cancel</Button><Button disabled={saving}>{saving?'Saving…':'Save Category'}</Button></DialogFooter></form></DialogContent></Dialog><ConfirmationDialog open={!!deleting} onOpenChange={v=>!v&&setDeleting(null)} title="Delete category?" description={`Delete ${deleting?.name}? A category still used by products cannot be deleted.`} confirmLabel="Delete Category" onConfirm={async()=>{if(deleting){await db.deleteCategory(deleting.id);await reload();toast.success('Category deleted');}}}/></div>;
+}

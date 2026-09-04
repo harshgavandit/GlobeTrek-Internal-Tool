@@ -1,0 +1,8 @@
+import { serverDb } from '@/lib/db/postgres';
+import { requireUser } from '@/lib/auth';
+import { ok,fail,readBody,checkOrigin } from '@/lib/api';
+import { idSchema } from '@/lib/validation';
+export async function GET(){try{await requireUser();return ok(await serverDb.getCustomers());}catch(e){return fail(e);}}
+export async function POST(req:Request){try{await requireUser(false);return ok(await serverDb.createCustomer(await readBody(req)));}catch(e){return fail(e);}}
+export async function PUT(req:Request){try{await requireUser(false);const body=await readBody(req);return ok(await serverDb.updateCustomer(idSchema.parse(body.id),body));}catch(e){return fail(e);}}
+export async function DELETE(req:Request){try{await requireUser(true);checkOrigin(req);await serverDb.deleteCustomer(idSchema.parse(new URL(req.url).searchParams.get('id')));return ok(null);}catch(e){return fail(e);}}

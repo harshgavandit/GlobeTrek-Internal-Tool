@@ -1,0 +1,19 @@
+npm notice run globetrek-quotation-system@1.0.0 test
+npm notice run tsx --test tests/*.test.ts
+✔ required acceptance calculation is exactly 6650 / 7300 (1.6041ms)
+✔ decimal round half up, fractional quantity and discount (0.2093ms)
+✔ tax includes charges and deducts explicit discount (0.1344ms)
+✔ invalid monetary inputs and weak passwords rejected (1.3405ms)
+✔ quotation validation rejects missing references, no items, and impossible dates (0.6152ms)
+✔ amount in words preserves subunits below one (0.278ms)
+✔ quotation dates use India midnight consistently on client and server (0.7756ms)
+✔ valid XLSX archive passes; malformed archives are rejected (19.3215ms)
+✔ forged uncompressed sizes cannot bypass the decompression bound (4.4256ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1932.4529

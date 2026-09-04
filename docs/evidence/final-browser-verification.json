@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "quotation": "GEC/QTN/2026-27/0061",
+  "id": "97dc9193-614b-40f6-93b6-da9855e9485d",
+  "customer": "Production Browser Acceptance",
+  "quotationDate": "2026-09-01",
+  "validUntil": "2026-10-01",
+  "subtotal": "6650.00",
+  "grandTotal": "7300.00",
+  "lineTotals": [
+    1650,
+    1750,
+    550,
+    2700
+  ],
+  "packaging": 150,
+  "freight": 450,
+  "insurance": 50,
+  "discount": 0,
+  "tax": 0,
+  "source": "Actual PDF and Excel downloaded through final production browser UI; independently matched against PostgreSQL and authenticated HTTP exports",
+  "date": "2026-08-31T18:55:27.833Z",
+  "workbookAllCellsMatch": true
+}

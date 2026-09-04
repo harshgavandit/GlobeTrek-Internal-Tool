@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "rows": [
+    {
+      "quotation_number": "GEC/QTN/2026-27/0061",
+      "total_amount": "7300.00",
+      "revision": 1,
+      "master": "825",
+      "quoted": "825"
+    },
+    {
+      "quotation_number": "GEC/QTN/2026-27/0077",
+      "total_amount": "7250.00",
+      "revision": 2,
+      "master": "825",
+      "quoted": "800"
+    }
+  ]
+}

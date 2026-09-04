@@ -1,0 +1,13 @@
+"use client";
+import React from 'react';
+import { DataTable,DataColumn } from '@/components/workspace/data-table';
+import { SearchInput,StatusBadge } from '@/components/workspace/primitives';
+import { ImportDiffsSummary } from '@/lib/excel-importer';
+type Item=ImportDiffsSummary['items'][number];
+export function ExcelDiffTable({diffSummary}:{diffSummary:ImportDiffsSummary}){
+ const [filter,setFilter]=React.useState('all');const [query,setQuery]=React.useState('');
+ const filters=[['all','All rows',diffSummary.totalRows],['new','New',diffSummary.newProducts],['details_update','Updated',diffSummary.detailUpdates],['price_update','Price changed',diffSummary.priceUpdates],['unchanged','Unchanged',diffSummary.unchanged],['error','Errors',diffSummary.errors]] as const;
+ const rows=React.useMemo(()=>diffSummary.items.filter(i=>(filter==='all'||i.action===filter)&&`${i.sku} ${i.name} ${i.changes.join(' ')}`.toLowerCase().includes(query.toLowerCase())),[diffSummary,filter,query]);
+ const columns:DataColumn<Item>[]=[{key:'row',label:'Row',sortValue:i=>i.rowNumber,cell:i=>i.rowNumber},{key:'status',label:'Change',cell:i=><StatusBadge status={i.action}/>},{key:'product',label:'Product',sortValue:i=>i.name,cell:i=><div className="min-w-40 max-w-xs"><p className="font-medium line-clamp-2">{i.name||'Unnamed product'}</p><p className="text-xs text-muted-foreground mt-1">{i.sku||'Missing SKU'}</p></div>},{key:'changes',label:'Preview / Validation',cell:i=><div className="space-y-1 min-w-60 max-w-xl">{i.errorMessage&&<p className="text-destructive">{i.errorMessage}</p>}{i.changes.map((c,n)=><p className="text-xs text-muted-foreground break-words" key={n}>{c}</p>)}{!i.changes.length&&!i.errorMessage&&<span className="text-muted-foreground">No changes</span>}</div>}];
+ return <div className="surface"><div className="flex flex-wrap gap-1 border-b p-3" role="group" aria-label="Filter import changes">{filters.map(([value,label,count])=><button key={value} type="button" aria-pressed={filter===value} className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${filter===value?'bg-primary/10 text-primary':'text-muted-foreground hover:bg-muted'}`} onClick={()=>setFilter(value)}>{label}<span className="ml-2 tabular-nums">{count}</span></button>)}</div><div className="table-toolbar"><SearchInput value={query} onValueChange={setQuery} placeholder="Find a product or change…" className="sm:max-w-sm"/></div><DataTable label="import rows" data={rows} columns={columns} rowKey={i=>String(i.rowNumber)} emptyTitle="No rows in this view" emptyDescription="Choose another change type or clear your search."/></div>;
+}

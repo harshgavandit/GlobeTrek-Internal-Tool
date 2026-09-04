@@ -1,0 +1,152 @@
+- link "Skip to content":
+  - /url: "#main-content"
+- complementary "Main navigation":
+  - link "Globetrek dashboard":
+    - /url: /dashboard
+    - paragraph: Globetrek.
+    - paragraph: Quotation workspace
+  - paragraph: Workspace
+  - navigation "Workspace":
+    - link "Dashboard":
+      - /url: /dashboard
+      - text: Dashboard
+    - link "Create Quotation":
+      - /url: /quotations/new
+      - text: Create Quotation
+    - link "Quotations":
+      - /url: /quotations
+      - text: Quotations
+  - paragraph: Catalog & customers
+  - navigation "Catalog & customers":
+    - link "Products":
+      - /url: /products
+      - text: Products
+    - link "Price Lists":
+      - /url: /price-lists
+      - text: Price Lists
+    - link "Customers":
+      - /url: /customers
+      - text: Customers
+  - paragraph: Administration
+  - navigation "Administration":
+    - link "Users":
+      - /url: /users
+      - text: Users
+    - link "Settings":
+      - /url: /settings
+      - text: Settings
+  - button "Collapse sidebar":
+    - generic: Collapse sidebar
+  - button "Account menu":
+    - generic: AA
+    - generic: Acceptance Administrator
+    - generic: Administrator
+- banner:
+  - navigation "Breadcrumb":
+    - link "Quotations":
+      - /url: /quotations
+    - generic: Create Quotation
+  - button "Search workspace navigation":
+    - generic: Go to…
+    - generic: Ctrl K
+- main:
+  - paragraph: Quotations
+  - heading "New Quotation" [level=1]
+  - paragraph: Choose your customer, add products, and review the total.
+  - button "Preview":
+    - text: Preview
+  - button "Save Quotation":
+    - text: Save Quotation
+  - heading "Customer" [level=2]
+  - button "New":
+    - text: New
+  - combobox "Select Customer":
+    - generic: UI Acceptance 1788205292163
+  - paragraph: Quotation reviewer · India
+  - heading "Pricing context" [level=2]
+  - generic: USD
+  - generic: Pricing Schedule
+  - combobox "Pricing Schedule":
+    - option "Acceptance USD 1788184053012 (USD)"
+    - option "Acceptance USD 1788190386911 (USD)" [selected]
+    - option "Acceptance USD 1788200241076 (USD)"
+    - option "Acceptance USD 1788201508220 (USD)"
+    - option "Acceptance USD 1788201994501 (USD)"
+    - option "Acceptance USD 1788202516574 (USD)"
+    - option "Acceptance USD 1788205206066 (USD)"
+  - paragraph: Changing lists replaces master and quoted prices for all items.
+  - text: Quotation Date
+  - textbox "Quotation Date": 2026-09-01
+  - text: Valid Until
+  - textbox "Valid Until": 2026-10-01
+  - paragraph: A unique quotation number is assigned when saved.
+  - heading "Search & Add Products" [level=2]
+  - paragraph: Add from the catalog, then adjust quantity and quoted price.
+  - combobox "Search product name, SKU, or model…" [expanded]: TEST-CBR-1788190386911
+  - button "Clear search":
+  - combobox "Product category":
+    - option "All categories" [selected]
+    - option "Acceptance 1788184053012"
+    - option "Acceptance 1788190386911"
+    - option "Acceptance 1788200241076"
+    - option "Acceptance 1788201508220"
+    - option "Acceptance 1788201994501"
+    - option "Acceptance 1788202516574"
+    - option "Acceptance 1788205206066"
+  - button "Refresh product prices":
+  - listbox "Product search results":
+    - option "CBR TEST-CBR-1788190386911 · Acceptance 1788190386911 Master price $825.00 Add CBR" [selected]:
+      - paragraph: CBR
+      - paragraph: TEST-CBR-1788190386911 · Acceptance 1788190386911
+      - paragraph: Master price
+      - paragraph: $825.00
+      - button "Add CBR" [disabled]:
+        - generic: Added
+  - paragraph: Use ↑ ↓ to choose a result and Enter to add. Prices are checked again when saving.
+  - heading "Selected products" [level=2]
+  - generic: 1 item · USD
+  - generic: Product
+  - generic: Qty
+  - generic: Master
+  - generic: Quoted price
+  - generic: Variance
+  - generic: Disc %
+  - generic: Amount
+  - paragraph: CBR
+  - generic: TEST-CBR-1788190386911
+  - button "Edit description"
+  - spinbutton "quantity TEST-CBR-1788190386911": "2"
+  - generic: $825.00
+  - spinbutton "unit price TEST-CBR-1788190386911" [active]: "800"
+  - generic: "-3.03%"
+  - spinbutton "discount percent TEST-CBR-1788190386911": "0"
+  - generic: $1,600.00
+  - button "Remove TEST-CBR-1788190386911":
+  - generic "Commercial terms & notes Review defaults"
+  - complementary:
+    - heading "Quotation Summary" [level=2]
+    - paragraph: Acceptance USD 1788190386911 · USD
+    - generic: Subtotal
+    - strong: $1,600.00
+    - generic: Discount
+    - spinbutton "discount amount": "0"
+    - generic: Packing
+    - spinbutton "packaging charges": "0"
+    - generic: Freight
+    - spinbutton "freight charges": "0"
+    - generic: Insurance
+    - spinbutton "insurance charges": "0"
+    - generic: Other charges
+    - spinbutton "other charges": "0"
+    - generic: GST / Tax (%)
+    - spinbutton "tax percent": "0"
+    - generic: Tax amount (0%)
+    - generic: $0.00
+    - generic: Grand Total
+    - strong: $1,600.00
+    - paragraph: One Thousand Six Hundred US Dollars Only
+- region "Notifications alt+T":
+  - list:
+    - button "Close toast":
+    - generic: Added "CBR"
+- alert

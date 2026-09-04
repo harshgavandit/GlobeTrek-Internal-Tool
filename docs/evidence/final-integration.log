@@ -1,0 +1,17 @@
+npm notice run globetrek-quotation-system@1.0.0 test:integration
+npm notice run tsx scripts/integration.ts
+PASS all business APIs reject anonymous and forged sessions
+PASS real bcrypt login and sanitized user responses
+PASS team role restrictions and cross-origin writes enforced server-side
+PASS customer/product data and current list prices shared between independent users
+PASS preview validates/recalculates without persistence or consuming a quotation number
+PASS saved PostgreSQL totals are 6650.00 / 7300.00; server ignores forged totals/identity; retry is idempotent
+PASS 12 simultaneous saves across two users receive unique quotation numbers
+PASS negative quantities, incorrect currencies, stale masters and excessive discounts rejected
+PASS Excel preview changes nothing, commit persists atomically with audited old/new prices, replay rejected
+PASS invalid import and stale preview cannot modify the catalog
+PASS saved customer, product price and company snapshots remain unchanged after master updates
+PASS HTTP PDF/Excel exports created from saved revision; numeric Excel totals verified
+PASS duplicate retains original snapshots, edit separates master/quoted prices, competing edit is rejected and prior revision retained
+PASS stale export revision rejected to prevent UI/export mismatch
+PASS logout revokes PostgreSQL session

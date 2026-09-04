@@ -1,0 +1,18 @@
+{
+  "database": "globetrek",
+  "counts": {
+    "products": 339,
+    "product_prices": 338,
+    "product_price_history": 338,
+    "categories": 4,
+    "price_lists": 1,
+    "customers": 0,
+    "quotations": 0,
+    "users": 1
+  },
+  "role": {
+    "rolsuper": false,
+    "rolcreatedb": false,
+    "rolcreaterole": false
+  }
+}

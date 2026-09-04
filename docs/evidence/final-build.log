@@ -1,0 +1,54 @@
+npm notice run globetrek-quotation-system@1.0.0 build
+npm notice run next build
+   ▲ Next.js 15.5.24
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 2.4s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/17) ...
+   Generating static pages (4/17) 
+   Generating static pages (8/17) 
+   Generating static pages (12/17) 
+ ✓ Generating static pages (17/17)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                      163 B         103 kB
+├ ○ /_not-found                            995 B         104 kB
+├ ƒ /api/auth/login                        163 B         103 kB
+├ ƒ /api/auth/logout                       163 B         103 kB
+├ ƒ /api/auth/me                           163 B         103 kB
+├ ƒ /api/categories                        163 B         103 kB
+├ ƒ /api/customers                         163 B         103 kB
+├ ƒ /api/imports                           163 B         103 kB
+├ ƒ /api/price-lists                       163 B         103 kB
+├ ƒ /api/products                          163 B         103 kB
+├ ƒ /api/quotations                        163 B         103 kB
+├ ƒ /api/quotations/export                 163 B         103 kB
+├ ƒ /api/settings                          163 B         103 kB
+├ ƒ /api/users                             163 B         103 kB
+├ ƒ /customers                           4.39 kB         155 kB
+├ ƒ /dashboard                           3.62 kB         143 kB
+├ ○ /login                               3.02 kB         139 kB
+├ ƒ /price-lists                            6 kB         154 kB
+├ ƒ /products                            9.62 kB         180 kB
+├ ƒ /products/categories                 5.49 kB         154 kB
+├ ƒ /products/import                     5.02 kB         138 kB
+├ ƒ /quotations                          4.87 kB         175 kB
+├ ƒ /quotations/[id]                     3.01 kB         146 kB
+├ ƒ /quotations/[id]/edit                2.72 kB         166 kB
+├ ƒ /quotations/new                      3.02 kB         166 kB
+├ ƒ /settings                            4.18 kB         149 kB
+└ ƒ /users                               6.25 kB         154 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/1255-fc6c00ab2f765339.js      46.4 kB
+  ├ chunks/4bd1b696-f785427dddbba9fb.js  54.2 kB
+  └ other shared chunks (total)             2 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

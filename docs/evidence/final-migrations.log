@@ -1,0 +1,3 @@
+npm notice run globetrek-quotation-system@1.0.0 migrate
+npm notice run tsx scripts/migrate.ts
+Migrations verified.

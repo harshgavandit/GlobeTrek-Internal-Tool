@@ -1,0 +1,1 @@
+import { NextResponse } from 'next/server';import { requireUser } from '@/lib/auth';import { fail } from '@/lib/api';export async function GET(){try{return NextResponse.json({success:true,user:await requireUser()},{headers:{'Cache-Control':'no-store'}});}catch(e){return fail(e);}}
