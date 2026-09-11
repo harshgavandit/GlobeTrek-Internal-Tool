@@ -10,8 +10,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingIncludes: {
     '/api/quotations/export': ['./assets/fonts/**/*'],
+    '/api/price-list-imports': ['./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'],
   },
-  serverExternalPackages: ['pg', 'exceljs', 'jspdf', 'jspdf-autotable'],
+  serverExternalPackages: ['pg', 'exceljs', 'jspdf', 'jspdf-autotable', 'pdfjs-dist'],
   async headers() {
     return [
       {

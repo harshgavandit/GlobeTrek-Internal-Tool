@@ -5,6 +5,7 @@ import { AppError, categorySchema, priceListSchema, customerSchema, productSchem
 import { Quotation, QuotationFormState, UserProfile, CompanySettings, Product, Category, price_lists, Customer } from '@/types';
 import { recalculateQuotation } from '../quotation-calculator';
 import { businessDate } from '../business-date';
+import { productDescriptionDetail } from '../product-description';
 
 const publicUser='id,email,full_name,role,created_at';
 type Queryable=Pick<PoolClient,'query'>;
@@ -27,7 +28,7 @@ export class ServerDatabaseManager {
  async deletePriceList(id:string){return transaction(async c=>{await catalogLock(c);await required(c,'price_lists',id);await c.query('UPDATE price_lists SET is_active=false WHERE id=$1',[id]);});}
  async getProducts(c:Queryable=getPool()):Promise<Product[]>{const products=await c.query('SELECT * FROM products ORDER BY sku');const prices=await c.query('SELECT p.*,l.currency FROM product_prices p JOIN price_lists l ON l.id=p.price_list_id');const categories=await this.getCategories(c);return products.rows.map(r=>({...unpack(r),category:categories.find(v=>v.id===r.category_id),prices:prices.rows.filter(v=>v.product_id===r.id).map(v=>({...normalize(v),unit_price:Number(v.unit_price)}))}));}
  async writeProduct(c:PoolClient,id:string|undefined,input:unknown,prices:unknown,actor:string,reason:string){
-  const v=productSchema.parse(input), amounts=pricesSchema.parse(prices??{});const {sku,name,category_id,is_active,...data}=v;
+  const v=productSchema.parse(input), amounts=pricesSchema.parse(prices??{});const {sku,name,category_id,is_active,...rawData}=v;const data={...rawData,description:productDescriptionDetail(name,rawData.description)};
   if(category_id)await required(c,'categories',category_id);
   let pid=id;
   if(pid){const old=await required(c,'products',pid);await c.query('UPDATE products SET sku=$2,name=$3,category_id=$4,data=$5,is_active=$6,updated_at=clock_timestamp() WHERE id=$1',[pid,sku,name,category_id||null,JSON.stringify(data),is_active??old.is_active]);}
@@ -62,11 +63,11 @@ export class ServerDatabaseManager {
   const products=await this.getProducts(c);const id=duplicate||!old?randomUUID():old.id;const now=new Date().toISOString();
   const items=form.items.map((item,index)=>{
    const retained=old?.price_list_id===form.price_list_id?old.items.find(v=>v.product_id===item.product_id):undefined;
-   if(retained)return {...retained,...item,master_price:retained.master_price,id:duplicate?randomUUID():retained.id,quotation_id:id};
+   if(retained){const merged={...retained,...item};return {...merged,description:productDescriptionDetail(merged.product_name,merged.description),master_price:retained.master_price,id:duplicate?randomUUID():retained.id,quotation_id:id};}
    const product=products.find(p=>p.id===item.product_id);const price=product?.prices?.find(p=>p.price_list_id===form.price_list_id);
    if(!product?.is_active||!price)throw new AppError(409,`Product ${index+1} has no active price in this list`);
    if(price.unit_price!==item.master_price)throw new AppError(409,`Price changed for ${product.sku}. Refresh products and review the master price.`);
-   return {...item,id:randomUUID(),quotation_id:id,product_name:product.name,sku:product.sku,description:item.description??product.description,model_number:product.model_number,master_price:price.unit_price,line_total:0,created_at:now};
+   return {...item,id:randomUUID(),quotation_id:id,product_name:product.name,sku:product.sku,description:productDescriptionDetail(product.name,item.description??product.description),model_number:product.model_number,master_price:price.unit_price,line_total:0,created_at:now};
   });
   const calculated=recalculateQuotation({...form,items,subtotal:0,tax_amount:0,total_amount:0} as QuotationFormState);
   if(calculated.total_amount<0||calculated.total_amount>999999999999)throw new AppError(400,'Discount exceeds the chargeable amount or total is too large');

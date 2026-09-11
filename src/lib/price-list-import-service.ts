@@ -5,8 +5,10 @@ import { catalogFingerprint, serverDb } from './db/postgres';
 import { AppError, money, productSchema } from './validation';
 import { validateZip } from './import-service';
 import { ImportDiffItem } from './excel-importer';
+import { productDescriptionDetail } from './product-description';
 
-const MAX_FILE_BYTES=5*1024*1024;
+export const MAX_PRICE_LIST_FILE_BYTES=15*1024*1024;
+const MAX_PDF_PAGES=200;
 const currencies=['INR','USD','EUR','GBP','AED'] as const;
 export type ImportCurrency=typeof currencies[number];
 export interface PriceListImportSummary {
@@ -40,37 +42,67 @@ async function parseWorkbook(buffer:Buffer):Promise<ParsedRow[]>{
  if(!rows.length)throw new AppError(400,'Workbook contains no product rows');return rows;
 }
 
-async function parsePdf(buffer:Buffer):Promise<ParsedRow[]>{
- if(buffer.length>MAX_FILE_BYTES)throw new AppError(413,'Maximum PDF size is 5 MB');
+type PdfFragment={text:string;x:number;y:number};
+type PdfLine={y:number;fragments:PdfFragment[]};
+const pdfHeader=(buffer:Buffer)=>buffer.subarray(0,1024).indexOf('%PDF-')>=0;
+const pdfLineText=(line:PdfLine)=>line.fragments.map(fragment=>fragment.text).join(' ').replace(/\s+/g,' ').trim();
+const productCode=(value:string)=>/^(?=.{2,32}$)(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value);
+const sectionHeading=(value:string)=>value.length<100&&/^[A-Z][A-Z\d\s&(),./'-]+$/.test(value)&&!/[a-z]/.test(value);
+const nonProductText=(value:string)=>/(?:above prices are subject|terms\s*&\s*conditions|narayankunj|panaspada|globetrekengineering@|indimart\.com|^\s*(?:ph|email|web)\s*[:.-])/i.test(value);
+const strongPrice=(value:string,parsed:number)=>/(?:inr|usd|eur|gbp|aed|rs\.?|₹|\$|€|£|,|\.)/i.test(value)||parsed>100;
+const skuSuffix=(value:string)=>value.toUpperCase().replace(/[^A-Z0-9]+/g,'').slice(0,24)||'VARIANT';
+function splitPdfProductText(value:string){const full=value.replace(/\s+/g,' ').trim();if(full.length<=180)return {name:full};const name=full.slice(0,181).replace(/\s+\S*$/,'').trim()||full.slice(0,180).trim();return {name,description:full.slice(name.length).replace(/^[\s,;:\-–—]+/u,'').trim()||undefined};}
+function groupPdfLines(items:unknown[]):PdfLine[]{
+ const lines:PdfLine[]=[];
+ for(const value of items){const item=value as {str?:unknown;transform?:unknown};if(typeof item.str!=='string'||!item.str.trim()||!Array.isArray(item.transform))continue;const x=Number(item.transform[4]),y=Number(item.transform[5]);if(!Number.isFinite(x)||!Number.isFinite(y))continue;let line=lines.find(candidate=>Math.abs(candidate.y-y)<=2);if(!line){line={y,fragments:[]};lines.push(line);}line.fragments.push({text:item.str.trim(),x,y});}
+ return lines.sort((a,b)=>b.y-a.y).map(line=>({...line,fragments:line.fragments.sort((a,b)=>a.x-b.x)}));
+}
+
+export async function parsePdfPriceRows(buffer:Buffer):Promise<ParsedRow[]>{
+ if(buffer.length>MAX_PRICE_LIST_FILE_BYTES)throw new AppError(413,'Maximum PDF size is 15 MB');
+ if(!pdfHeader(buffer))throw new AppError(400,'The selected file is not a valid PDF');
  let pdfjs:typeof import('pdfjs-dist/legacy/build/pdf.mjs');
  try{pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs');}catch{throw new AppError(503,'PDF import is temporarily unavailable on this server');}
- let document:{numPages:number;getPage(page:number):Promise<{getTextContent():Promise<{items:unknown[]}>}>};
- try{document=await pdfjs.getDocument({data:new Uint8Array(buffer),useWorkerFetch:false}).promise;}catch{throw new AppError(400,'PDF could not be read. Upload a non-encrypted, text-based PDF.');}
- if(document.numPages>100)throw new AppError(400,'Maximum PDF length is 100 pages');
- const rows:ParsedRow[]=[];
+ let document:{numPages:number;getPage(page:number):Promise<{getTextContent():Promise<{items:unknown[]}>;getViewport(options:{scale:number}):{width:number}}>};
+ try{document=await pdfjs.getDocument({data:new Uint8Array(buffer),useWorkerFetch:false}).promise;}catch(error){console.error('Price-list PDF load failed',error instanceof Error?{name:error.name,message:error.message}:{message:'Unknown PDF.js error'});throw new AppError(400,'PDF could not be read. Upload a valid, non-encrypted PDF.');}
+ if(document.numPages>MAX_PDF_PAGES)throw new AppError(400,`Maximum PDF length is ${MAX_PDF_PAGES} pages`);
+ const parsed:{rowNumber:number;sku?:string;fullName:string;price:number}[]=[];
+ let parent:{sku:string;fullName:string}|undefined;
  for(let page=1;page<=document.numPages;page++){
-  const content=await (await document.getPage(page)).getTextContent();
-  const lines=new Map<number,string[]>();
-  for(const value of content.items){const item=value as {str?:unknown;transform?:unknown};if(typeof item.str!=='string'||!item.str.trim()||!Array.isArray(item.transform))continue;const y=Math.round(Number(item.transform[5]));if(!Number.isFinite(y))continue;lines.set(y,[...(lines.get(y)||[]),item.str]);}
-  for(const line of [...lines.entries()].sort(([a],[b])=>b-a).map(([,parts])=>parts.join(' ').replace(/\s+/g,' ').trim())){
-   if(/^(sr\.?|s\.?no|product|description|unit\s*(cost|price)|total|page\s+\d+)/i.test(line))continue;
-   const pipes=line.split('|').map(part=>part.trim()).filter(Boolean);let sku:string|undefined,name:string|undefined,priceText:string|undefined;
-   if(pipes.length>=3){sku=pipes[0];name=pipes.slice(1,-1).join(' ');priceText=pipes.at(-1);}
-   else {const match=line.match(/^([A-Za-z0-9][A-Za-z0-9._/-]{1,})\s{2,}(.+?)\s{2,}((?:₹|Rs\.?|INR|\$|USD|€|EUR|£|GBP|AED)?\s*[\d,]+(?:\.\d{1,2})?)$/i);if(match){[,sku,name,priceText]=match;}}
-   const price=priceText?parseAmount(priceText):undefined;if(name&&price!==undefined)rows.push({rowNumber:rows.length+2,sku,name,price});
+  const pdfPage=await document.getPage(page);const content=await pdfPage.getTextContent();const pageWidth=pdfPage.getViewport({scale:1}).width;let current:typeof parsed[number]|undefined;
+  for(const line of groupPdfLines(content.items)){
+   const text=pdfLineText(line);if(!text||nonProductText(text)){current=undefined;continue;}if(/^(price\s*list|sr\.?|s\.?no|product\s*(code|description)?|description|unit\s*(cost|rate|price)|total|page\s+\d+)/i.test(text)){continue;}
+   const fragments=line.fragments;let priceIndex=-1,price:number|undefined;
+   for(let index=fragments.length-1;index>=0;index--){const candidate=parseAmount(fragments[index].text);if(candidate!==undefined&&strongPrice(fragments[index].text,candidate)){priceIndex=index;price=candidate;break;}}
+   if(priceIndex>=0&&price!==undefined){
+    const before=fragments.slice(0,priceIndex);if(before.length&&/^\d+(?:\.\d+)?$/.test(before.at(-1)!.text)&&before.at(-1)!.x>pageWidth*.62)before.pop();
+    let sku:string|undefined;const first=before[0]?.text||'';const embedded=first.match(/^([A-Za-z]+-[A-Za-z0-9._/-]+)\s+(.+)$/);if(embedded&&productCode(embedded[1])){sku=embedded[1];before[0]={...before[0],text:embedded[2]};}else if(productCode(first)){sku=first;before.shift();}else if(/^\d+[.)]?$/.test(first)){before.shift();}
+    let fullName=before.map(fragment=>fragment.text).join(' ').replace(/\s+/g,' ').trim();
+    if(parent&&sku&&/^[a-d]\.$/i.test(sku)){const discriminator=parent.sku==='GT-175'?(parent.fullName.includes('Three pressure')?'-3G':'-1G'):'';sku=`${parent.sku}${discriminator}-${skuSuffix(fullName)}`;fullName=`${parent.fullName} Capacity: ${fullName}`;}
+    else if(parent&&sku&&sku.startsWith(parent.sku)&&fullName.length<40){sku=`${sku}-${skuSuffix(fullName)}${/^GT-6[23][ab]$/i.test(sku)?'MM':''}`;fullName=`${parent.fullName} ${fullName}${/^GT-6[23][ab]-/i.test(sku)?' mm':''}`;}
+    if(sku==='GT-184')sku+=/hand operated/i.test(fullName)?'-HAND':'-ELECTRIC';
+    if(sku==='GT-292')sku+=/digital readout/i.test(fullName)?'-DIGITAL':'-ELECTRICAL';
+    if(sku&&parsed.some(row=>row.sku?.toLowerCase()===sku!.toLowerCase())){const base=`${sku}-${skuSuffix(fullName)}`;sku=base;let duplicate=2;while(parsed.some(row=>row.sku?.toLowerCase()===sku!.toLowerCase()))sku=`${base}-${duplicate++}`;}
+    if(fullName){current={rowNumber:parsed.length+2,sku,fullName,price};parsed.push(current);continue;}
+   }
+   const parentFragments=[...fragments];if(parentFragments.length&&/^\d+(?:\.\d+)?$/.test(parentFragments.at(-1)!.text)&&parentFragments.at(-1)!.x>pageWidth*.62)parentFragments.pop();const parentCode=parentFragments[0]?.text||'';
+   if(/^GT-[A-Za-z0-9._/-]+$/i.test(parentCode)){parentFragments.shift();parent={sku:parentCode,fullName:parentFragments.map(fragment=>fragment.text).join(' ').replace(/\s+/g,' ').trim()};current=undefined;continue;}
+   if(current&&!sectionHeading(text)&&line.fragments[0].x>pageWidth*.06&&line.fragments[0].x<pageWidth*.8&&!/^\d+(?:\.\d+)?$/.test(text))current.fullName=`${current.fullName} ${text}`.replace(/\s+/g,' ').trim();
+   else if(parent&&!sectionHeading(text)&&line.fragments[0].x>pageWidth*.06&&line.fragments[0].x<pageWidth*.8&&!/^\d+(?:\.\d+)?$/.test(text))parent.fullName=`${parent.fullName} ${text}`.replace(/\s+/g,' ').trim();
   }
  }
- if(!rows.length)throw new AppError(400,'No price rows were detected. Use a text-based PDF with SKU, product name and a final price column, or import an Excel workbook.');
+ const rows=parsed.map(row=>({...row,...splitPdfProductText(row.fullName),fullName:undefined})).map(({fullName:_,...row})=>row);
+ if(!rows.length)throw new AppError(400,'No product and price rows were detected. Use a PDF with readable table text or import an Excel workbook. Scanned image-only PDFs require OCR before upload.');
  return rows;
 }
 
 export async function previewPriceListImport(buffer:Buffer,source:PriceListImportSummary['source'],name:string,currency:string,description:string,actor:string):Promise<PriceListImportSummary>{
- if(buffer.length>MAX_FILE_BYTES)throw new AppError(413,`Maximum ${source==='pdf'?'PDF':'workbook'} size is 5 MB`);
+ if(buffer.length>MAX_PRICE_LIST_FILE_BYTES)throw new AppError(413,`Maximum ${source==='pdf'?'PDF':'workbook'} size is 15 MB`);
  if(!name.trim())throw new AppError(400,'Price list name is required');if(!currencies.includes(currency as ImportCurrency))throw new AppError(400,'Invalid price list currency');
- const rows=source==='xlsx'?await parseWorkbook(buffer):await parsePdf(buffer);
+ const rows=source==='xlsx'?await parseWorkbook(buffer):await parsePdfPriceRows(buffer);
  return transaction(async c=>{await catalogLock(c);const lists=await serverDb.getPriceLists(c);if(lists.some(list=>list.name.toLowerCase()===name.trim().toLowerCase()))throw new AppError(409,'A price list with this name already exists. Choose a new name.');
   const products=await serverDb.getProducts(c),categories=await serverDb.getCategories(c),seen=new Set<string>(),items:ImportDiffItem[]=[];
-  for(const row of rows){const item:ImportDiffItem={rowNumber:row.rowNumber,sku:row.sku?.trim()||safeSku(row.name||'',row.rowNumber),name:row.name?.trim()||'',model_number:row.model_number||undefined,category:row.category||undefined,description:row.description||undefined,action:'unchanged',changes:[],prices:{},errorMessage:undefined};
+  for(const row of rows){const productName=row.name?.trim()||'';const item:ImportDiffItem={rowNumber:row.rowNumber,sku:row.sku?.trim()||safeSku(productName,row.rowNumber),name:productName,model_number:row.model_number||undefined,category:row.category||undefined,description:productDescriptionDetail(productName,row.description),action:'unchanged',changes:[],prices:{},errorMessage:undefined};
    try{productSchema.parse(item);const key=item.sku.toLowerCase();if(seen.has(key))throw new Error('Duplicate SKU in import');seen.add(key);const old=products.find(product=>product.sku.toLowerCase()===key);if(old&&!old.is_active)throw new Error('Product is inactive; reactivate it before importing');if(row.price===undefined)throw new Error('Price must be a non-negative numeric value');item.prices.__new_price_list__=row.price;
     if(item.category&&!categories.some(category=>category.name.toLowerCase()===item.category!.toLowerCase()))item.changes.push(`Create category: ${item.category}`);
     if(!old){item.action='new';item.changes.push('Create product');}else{for(const field of ['name','model_number','description'] as const)if(item[field]!==undefined&&item[field]!==old[field])item.changes.push(`${field}: ${old[field]||'(empty)'} -> ${item[field]}`);if(item.category&&item.category!==old.category?.name)item.changes.push(`Category: ${old.category?.name||'(empty)'} -> ${item.category}`);item.action=item.changes.length?'details_update':'price_update';}

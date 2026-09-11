@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Quotation } from '@/types';
 import { quotationBankAccounts, quotationTermSections, QuotationTermSection } from './quotation-terms';
+import { productDescriptionDetail } from './product-description';
 
 const NAVY:[number,number,number]=[17,42,70];
 const BLACK:[number,number,number]=[20,20,20];
@@ -54,7 +55,7 @@ export async function renderReferenceQuotationPDF(q:Quotation){
  const descriptionWidth=290;
  const layouts=q.items.map(item=>{
   doc.setFontSize(8.4);doc.setFont('DejaVu','bold');const title=doc.splitTextToSize(item.product_name,descriptionWidth);
-  doc.setFont('DejaVu','normal');const details=[item.model_number?`Model: ${item.model_number}`:'',item.description||''].filter(Boolean).join('\n');
+  doc.setFont('DejaVu','normal');const details=[item.model_number?`Model: ${item.model_number}`:'',productDescriptionDetail(item.product_name,item.description)].filter(Boolean).join('\n');
   const detail=details?details.split('\n').flatMap(line=>doc.splitTextToSize(line,descriptionWidth)):[];
   return {title,detail,height:Math.max(28,8+(title.length+detail.length)*10)};
  });

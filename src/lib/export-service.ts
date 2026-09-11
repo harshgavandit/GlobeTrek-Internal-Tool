@@ -5,7 +5,8 @@ import { Quotation } from '@/types';
 import { quotationDocument } from './quotation-document';
 import { renderReferenceQuotationPDF } from './quotation-pdf';
 import { quotationBankAccounts, quotationTermSections } from './quotation-terms';
-const itemDescription=(i:Quotation['items'][number])=>[i.product_name,i.model_number?`Model: ${i.model_number}`:'',i.description].filter(Boolean).join('\n');
+import { productDescriptionText } from './product-description';
+const itemDescription=(i:Quotation['items'][number])=>productDescriptionText(i.product_name,i.description,i.model_number);
 async function companyLogo(q:Quotation){
  const logo='/brand/globetrek-new-logo.png';
  if(!logo||!/^\/brand\/[A-Za-z0-9._-]+$/.test(logo))return undefined;
@@ -13,7 +14,7 @@ async function companyLogo(q:Quotation){
 }
 // Excel caps row height at 409 points. Continuation rows retain long text visibly.
 function textBlocks(text:string,width:number){
- const lines=text.split('\n').flatMap(line=>{const out:string[]=[];for(let n=0;n<line.length;n+=width)out.push(line.slice(n,n+width));return out.length?out:[''];});
+ const lines=text.split('\n').flatMap(line=>{const out:string[]=[];let current='';for(const word of line.trim().split(/\s+/).filter(Boolean)){if(word.length>width){if(current){out.push(current);current='';}for(let index=0;index<word.length;index+=width)out.push(word.slice(index,index+width));continue;}const candidate=current?`${current} ${word}`:word;if(candidate.length>width){out.push(current);current=word;}else current=candidate;}if(current||!out.length)out.push(current);return out;});
  const blocks:string[]=[];for(let n=0;n<lines.length;n+=18)blocks.push(lines.slice(n,n+18).join('\n'));return blocks;
 }
 export const renderPDF=renderReferenceQuotationPDF;

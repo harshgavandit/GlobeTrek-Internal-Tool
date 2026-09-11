@@ -47,8 +47,9 @@ with pdfplumber.open(source) as pdf:
     if code=='GT-292':
      sku=code+('-DIGITAL' if 'DIGITAL READOUT' in description else '-ELECTRICAL');note='Source repeats GT-292; model suffix distinguishes variants'
     if sku in groups:raise ValueError(f'Duplicate mapping: {sku}')
-    name=description[:180].strip()
-    item={'sku':sku,'name':name,'description':description,'category':category,'unit_price':float(price_match[1].replace(',','')),'currency':'INR','source_code':original_code,'source_page':page_no,'source_quantity':qty,'mapping_note':note}
+    name=description if len(description)<=180 else description[:181].rsplit(' ',1)[0].strip()
+    detail=description[len(name):].lstrip(' ,;:-–—').strip() if description.startswith(name) else description
+    item={'sku':sku,'name':name,'description':detail,'category':category,'unit_price':float(price_match[1].replace(',','')),'currency':'INR','source_code':original_code,'source_page':page_no,'source_quantity':qty,'mapping_note':note}
     groups[sku]=item;rows.append(item)
 payload={'source_file':source.name,'sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'price_list':'Gtec Price List 2022-23','currency':'INR','basis':'Ex-Work Mumbai; historical source, not a current price assertion','products':rows,'unpriced':unpriced}
 Path('database/gtec-price-list-2022-23.json').write_text(json.dumps(payload,indent=2,ensure_ascii=False),encoding='utf-8')

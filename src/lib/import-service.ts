@@ -4,6 +4,7 @@ import { catalogLock, transaction } from './db/pool';
 import { catalogFingerprint, serverDb } from './db/postgres';
 import { AppError, money, productSchema } from './validation';
 import { ImportDiffItem, ImportDiffsSummary } from './excel-importer';
+import { productDescriptionDetail } from './product-description';
 
 // Bound actual decompression before ExcelJS parses workbook XML. Declared ZIP
 // sizes alone can be forged, so each entry is inflated with a hard output limit.
@@ -50,7 +51,7 @@ export async function previewImport(buffer:Buffer,actor:string):Promise<ImportDi
      if(priceCols.has(i)){if(typeof v!=='number')throw new Error(`Price in ${h} must be a numeric cell`);item.prices[priceCols.get(i)!]=money.parse(v);}
      else Object.assign(item,{[fields[h]]:String(v).trim()});
     }
-    productSchema.parse(item);const key=item.sku.toLowerCase();if(seen.has(key))throw new Error('Duplicate SKU in workbook');seen.add(key);
+    item.description=productDescriptionDetail(item.name,item.description);productSchema.parse(item);const key=item.sku.toLowerCase();if(seen.has(key))throw new Error('Duplicate SKU in workbook');seen.add(key);
     const old=products.find(p=>p.sku.toLowerCase()===key);
     if(old&&!old.is_active)throw new Error('Product is inactive; reactivate it before importing');
     if(item.category&&!cats.some(cat=>cat.name.toLowerCase()===item.category!.toLowerCase()))item.changes.push(`Create category: ${item.category}`);
