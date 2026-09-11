@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { Quotation } from '../src/types';
-import { renderPDF } from '../src/lib/export-service';
+import ExcelJS from 'exceljs';
+import { renderExcel, renderPDF } from '../src/lib/export-service';
+import { STANDARD_TERMS_VERSION } from '../src/lib/quotation-terms';
 
 let source:Quotation;
 const technical=[
@@ -21,8 +23,12 @@ function quotation(count:number,longDescriptions=false):Quotation{
  });
  const subtotal=items.reduce((sum,item)=>sum+item.line_total,0);const packaging_charges=150,freight_charges=450,insurance_charges=50,tax_percent=18;
  const tax_amount=Number(((subtotal+packaging_charges+freight_charges+insurance_charges)*tax_percent/100).toFixed(2));
- return {...source,id:randomUUID(),quotation_number:`GTEC/PDF/${count}/2026-27`,customer_reference:'Email enquiry for laboratory testing equipment',items,subtotal,packaging_charges,freight_charges,insurance_charges,other_charges:0,discount_amount:0,tax_percent,tax_amount,total_amount:subtotal+packaging_charges+freight_charges+insurance_charges+tax_amount,payment_terms:'100% payment against proforma invoice prior to dispatch.',delivery_terms:'Available stock or within 1 to 2 weeks from receipt of a technically and commercially clear purchase order.',warranty_terms:'One year against manufacturing defects under normal working conditions.',validity_terms:'30 days from the date of issue.',freight_terms:'Freight and transit charges will be borne by the buyer.',notes:'Errors and omissions are subject to correction without prior notice.',company_snapshot:{...source.company_snapshot,bank_accounts:[{bank_name:'IDFC FIRST Bank',account_name:source.company_snapshot.company_name,account_no:'10148119695',ifsc:'IDFB0040172',branch:'CBD Belapur, Navi Mumbai'},{bank_name:'Indian Bank',account_name:source.company_snapshot.company_name,account_no:'6209411911',ifsc:'IDIB000N110',branch:'Nerul East, Navi Mumbai'}]}};
+ return {...source,id:randomUUID(),quotation_number:`GTEC/PDF/${count}/2026-27`,customer_reference:'Email enquiry for laboratory testing equipment',items,subtotal,packaging_charges,freight_charges,insurance_charges,other_charges:0,discount_amount:0,tax_percent,tax_amount,total_amount:subtotal+packaging_charges+freight_charges+insurance_charges+tax_amount,payment_terms:'100% payment against proforma invoice prior to dispatch.',delivery_terms:'Available stock or within 1 to 2 weeks from receipt of a technically and commercially clear purchase order.',warranty_terms:'One year against manufacturing defects under normal working conditions.',validity_terms:'30 days from the date of issue.',freight_terms:'Freight and transit charges will be borne by the buyer.',notes:'Errors and omissions are subject to correction without prior notice.',company_snapshot:{...source.company_snapshot,terms_template_version:STANDARD_TERMS_VERSION,bank_accounts:[{bank_name:'IDFC FIRST Bank',account_name:'Globetrek Engineering Corporation',account_no:'10148119695',ifsc:'IDFB0040172',branch:'Navi Mumbai CBD Belapur Branch'},{bank_name:'Indian Bank',account_name:'Globetrek Engineering Corporation',account_no:'6209411911',ifsc:'IDIB000N110',branch:'Nerul, Nerul East, Navi Mumbai'}]}};
 }
+
+async function pdfText(bytes:Uint8Array){const pdfjs=await import('pdfjs-dist/legacy/build/pdf.mjs');const document=await pdfjs.getDocument({data:bytes.slice(),useWorkerFetch:false}).promise;const text:string[]=[];for(let page=1;page<=document.numPages;page++){const content=await (await document.getPage(page)).getTextContent();for(const item of content.items)if('str'in item)text.push(item.str);}return text.join(' ').replace(/\s+/g,' ');}
+const requiredTerms=['1. Validity of Quotation:','10. Payment Terms:','Bank Details:','11. Bank Charges:','14. Errors & Omissions:','10148119695','IDIB000N110'];
+function verifyTerms(text:string,label:string){for(const expected of requiredTerms)if(!text.includes(expected))throw new Error(`${label} is missing ${expected}`);const ordered=requiredTerms.slice(0,5).map(expected=>text.indexOf(expected));if(ordered.some((position,index)=>index>0&&position<=ordered[index-1]))throw new Error(`${label} terms or Bank Details are out of order`);}
 
 async function main(){
  const fixture=JSON.parse(await fs.readFile('tmp/audit/fixture.json','utf8'));source=fixture.quotation as Quotation;
@@ -30,7 +36,8 @@ async function main(){
  for(const [name,count,longDescriptions] of [['test-a-4',4,false],['test-b-15',15,false],['test-c-36-long',36,true]] as const){
   const bytes=await renderPDF(quotation(count,longDescriptions));
   if(bytes.length<1000||String.fromCharCode(...bytes.slice(0,4))!=='%PDF')throw new Error(`${name} is not a valid PDF`);
-  await fs.writeFile(`tmp/pdf-template/generated/${name}.pdf`,bytes);
+  await fs.writeFile(`tmp/pdf-template/generated/${name}.pdf`,bytes);verifyTerms(await pdfText(bytes),`${name} PDF`);
+  if(name==='test-a-4'){const excel=await renderExcel(quotation(count,longDescriptions));await fs.writeFile('tmp/pdf-template/generated/test-a-4.xlsx',excel);const workbook=new ExcelJS.Workbook();await workbook.xlsx.load(excel as unknown as ArrayBuffer);const excelText:string[]=[];workbook.worksheets[0].eachRow(row=>row.eachCell(cell=>excelText.push(String(cell.value??''))));verifyTerms(excelText.join(' '),'Excel');console.log(`PASS test-a-4 Excel: exact terms and bank details`);}
   console.log(`PASS ${name}: ${count} products, ${bytes.length} bytes`);
  }
 }

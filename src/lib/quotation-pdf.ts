@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Quotation } from '@/types';
+import { quotationBankAccounts, quotationTermSections, QuotationTermSection } from './quotation-terms';
 
 const NAVY:[number,number,number]=[17,42,70];
 const BLACK:[number,number,number]=[20,20,20];
@@ -19,17 +20,9 @@ const quantity=(value:number)=>Number.isInteger(value)?String(value).padStart(2,
 const longDate=(value:string)=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'long',year:'numeric',timeZone:'Asia/Kolkata'}).format(new Date(`${value}T00:00:00+05:30`)).toUpperCase();
 
 async function logoData(q:Quotation){
- const logo=q.company_snapshot.logo_path;
+ const logo='/brand/globetrek-new-logo.png';
  if(!logo||!/^\/brand\/[A-Za-z0-9._-]+$/.test(logo))return undefined;
  try{return (await readFile(path.join(process.cwd(),'public',...logo.split('/').filter(Boolean)))).toString('base64');}catch{return undefined;}
-}
-
-function bankAccounts(q:Quotation){
- const s=q.company_snapshot;
- const configured=(s.bank_accounts||[]).filter(account=>account.bank_name||account.account_no||account.ifsc);
- if(configured.length)return configured;
- if(!s.bank_name&&!s.bank_account_no&&!s.bank_ifsc)return [];
- return [{bank_name:s.bank_name,account_name:s.bank_account_name,account_no:s.bank_account_no,ifsc:s.bank_ifsc,branch:s.bank_branch,swift:s.bank_swift}];
 }
 
 function pageBreakIfNeeded(doc:jsPDF,y:number,height:number){
@@ -92,23 +85,11 @@ export async function renderReferenceQuotationPDF(q:Quotation){
 
  y=pageBreakIfNeeded(doc,lastTableY(doc)+16,40);
  doc.setFillColor(...NAVY);doc.rect(SIDE,y,CONTENT_WIDTH,18,'F');doc.setFont('DejaVu','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text('TERMS & CONDITIONS',PAGE_WIDTH/2,y+12,{align:'center'});y+=26;
- const sections:Array<{title:string;bullets:string[]}>=[];
- const addTerm=(title:string,values:Array<string|undefined>)=>{const bullets=values.flatMap(value=>(value||'').split('\n').map(line=>line.trim()).filter(Boolean));if(bullets.length)sections.push({title,bullets});};
- addTerm('Validity of Quotation',[q.validity_terms]);
- addTerm('Goods and Services Tax (GST)',[`GST @${q.tax_percent}%: ${q.currency} ${currencyAmount(q.tax_amount,q.currency)}`,q.company_snapshot.gstin?`GSTIN: ${q.company_snapshot.gstin}`:undefined]);
- addTerm('Delivery Schedule',[q.delivery_terms]);
- addTerm('Pricing & Packing',[`Packing and forwarding: ${q.currency} ${currencyAmount(q.packaging_charges,q.currency)}`]);
- addTerm('Freight and Transit',[q.freight_terms,`Freight charge: ${q.currency} ${currencyAmount(q.freight_charges,q.currency)}`]);
- addTerm('Insurance',[`Transit insurance: ${q.currency} ${currencyAmount(q.insurance_charges,q.currency)}`]);
- addTerm('Payment Terms',[q.payment_terms]);
- addTerm('Warranty',[q.warranty_terms]);
- addTerm('Additional Notes',[q.notes]);
- const termRows:(string|{content:string;styles:{fontStyle:'bold'|'normal';cellPadding:{top:number;right:number;bottom:number;left:number}}})[][]=[];
- sections.forEach((section,index)=>{termRows.push([{content:`${index+1}. ${section.title}:`,styles:{fontStyle:'bold',cellPadding:{top:6,right:0,bottom:2,left:0}}}]);section.bullets.forEach(bullet=>termRows.push([{content:`•  ${bullet}`,styles:{fontStyle:'normal',cellPadding:{top:1,right:0,bottom:2,left:18}}}]));});
- autoTable(doc,{startY:y,margin:{left:SIDE,right:SIDE,top:TOP,bottom:52},tableWidth:CONTENT_WIDTH,theme:'plain',body:termRows,
-  styles:{font:'DejaVu',fontSize:8.7,textColor:BLACK,overflow:'linebreak',cellPadding:2},columnStyles:{0:{cellWidth:CONTENT_WIDTH}}});
+ const sections=quotationTermSections(q);
+ const drawTerms=(selected:QuotationTermSection[],startY:number)=>{const termRows:(string|{content:string;styles:{fontStyle:'bold'|'normal';cellPadding:{top:number;right:number;bottom:number;left:number}}})[][]=[];selected.forEach(section=>{termRows.push([{content:`${section.number}. ${section.title}:`,styles:{fontStyle:'bold',cellPadding:{top:6,right:0,bottom:2,left:0}}}]);section.bullets.forEach(bullet=>termRows.push([{content:`•  ${bullet}`,styles:{fontStyle:'normal',cellPadding:{top:1,right:0,bottom:2,left:18}}}]));});if(termRows.length)autoTable(doc,{startY,margin:{left:SIDE,right:SIDE,top:TOP,bottom:52},tableWidth:CONTENT_WIDTH,theme:'plain',body:termRows,styles:{font:'DejaVu',fontSize:8.7,textColor:BLACK,overflow:'linebreak',cellPadding:2},columnStyles:{0:{cellWidth:CONTENT_WIDTH}}});};
+ const paymentIndex=sections.findIndex(section=>section.number===10);const firstTerms=paymentIndex>=0?sections.slice(0,paymentIndex+1):sections;const finalTerms=paymentIndex>=0?sections.slice(paymentIndex+1):[];drawTerms(firstTerms,y);
 
- const accounts=bankAccounts(q);
+ const accounts=quotationBankAccounts(q);
  if(accounts.length){
   y=pageBreakIfNeeded(doc,lastTableY(doc)+12,80);doc.setFont('DejaVu','bold');doc.setFontSize(9);doc.setTextColor(...BLACK);doc.text('Bank Details:',SIDE,y);y+=8;
   for(let index=0;index<accounts.length;index+=2){const pair=accounts.slice(index,index+2);
@@ -126,6 +107,8 @@ export async function renderReferenceQuotationPDF(q:Quotation){
   }
  }
 
+ if(finalTerms.length){y=pageBreakIfNeeded(doc,lastTableY(doc)+8,30);drawTerms(finalTerms,y);}
+
  y=pageBreakIfNeeded(doc,lastTableY(doc)+16,120);doc.setFont('DejaVu','normal');doc.setFontSize(8.8);doc.setTextColor(...BLACK);
  const closing=[
   'If you require any further clarification or additional information, please feel free to contact us at your convenience.',
@@ -141,7 +124,7 @@ export async function renderReferenceQuotationPDF(q:Quotation){
  ];
  for(let page=1;page<=doc.getNumberOfPages();page++){
   doc.setPage(page);doc.setFillColor(255,255,255);doc.rect(0,0,PAGE_WIDTH,86,'F');
-  if(logo)doc.addImage(logo,'JPEG',SIDE,12,170,64);else{doc.setFont('DejaVu','bold');doc.setFontSize(14);doc.setTextColor(...NAVY);doc.text(q.company_snapshot.company_name,SIDE,44);}
+  if(logo)doc.addImage(logo,'PNG',SIDE,12,170,64);else{doc.setFont('DejaVu','bold');doc.setFontSize(14);doc.setTextColor(...NAVY);doc.text(q.company_snapshot.company_name,SIDE,44);}
   doc.setFont('times','bold');doc.setFontSize(18);doc.setTextColor(0,0,0);doc.text('SALES QUOTATION',PAGE_WIDTH-SIDE,55,{align:'right'});
   doc.setDrawColor(...NAVY);doc.setLineWidth(1);doc.line(SIDE,80,PAGE_WIDTH-SIDE,80);
   doc.setFillColor(...NAVY);doc.rect(SIDE,802,CONTENT_WIDTH,30,'F');doc.setFont('DejaVu','bold');doc.setFontSize(6.2);doc.setTextColor(255,255,255);

@@ -75,6 +75,14 @@ Required columns: `SKU`, `Product Name`. Optional columns: `Model No`, `Category
 
 Upload → inspect the row-level diff → commit. Preview is stored in PostgreSQL and changes no catalogue data. Commit is all-or-nothing, records price history, belongs to the previewing administrator, expires after 30 minutes, cannot be replayed, and refuses to proceed if the catalogue changed after preview. Re-upload after a conflict. The archive validator bounds actual decompression, not only declared ZIP sizes.
 
+## New price-list import
+
+Administrators can create an entire price list directly from **Price Lists → Import Price List**. The import accepts one `.xlsx` workbook or one text-based `.pdf`, up to 5 MB. The new list's name, currency and optional description are entered before upload.
+
+- Excel needs `Product Name` and `Price`; `SKU`/`Code`, `Category`, `Model No` and `Description` are optional. A missing SKU receives a stable import SKU so the product remains editable and traceable.
+- PDF import reads selectable text only. Each recognized row needs SKU, product name and a final price column, either separated by `|` or by spaced columns. Image-only/scanned PDFs are rejected because the system never guesses product data from OCR.
+- The preview identifies new products, category/detail updates and every new master price. Saving takes the catalog lock, creates the price list and any required products/categories in one PostgreSQL transaction, and records a `product_price_history` entry for each price. Existing quotations are not changed.
+
 ## Permissions and security
 
 | Capability | Administrator | Team member |

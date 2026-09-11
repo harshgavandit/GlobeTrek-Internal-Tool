@@ -1,0 +1,9 @@
+import { requireUser } from '@/lib/auth';
+import { checkOrigin, fail, ok, readBody } from '@/lib/api';
+import { AppError, idSchema } from '@/lib/validation';
+import { commitPriceListImport, previewPriceListImport, priceListImportTemplate } from '@/lib/price-list-import-service';
+export const runtime='nodejs';
+const MAX=5*1024*1024;
+export async function GET(){try{await requireUser(true);return new Response(new Uint8Array(await priceListImportTemplate()),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="Globetrek_Price_List_Import_Template.xlsx"','Cache-Control':'no-store'}});}catch(error){return fail(error);}}
+export async function POST(req:Request){try{const user=await requireUser(true);checkOrigin(req);const form=await req.formData();const file=form.get('file');if(!(file instanceof File))throw new AppError(400,'Select a PDF or Excel file');if(file.size===0||file.size>MAX)throw new AppError(413,'Maximum file size is 5 MB');const name=String(form.get('name')||''),currency=String(form.get('currency')||''),description=String(form.get('description')||'');const lower=file.name.toLowerCase();const source=lower.endsWith('.xlsx')?'xlsx':lower.endsWith('.pdf')?'pdf':undefined;if(!source)throw new AppError(415,'Only .xlsx and .pdf files are supported');return ok(await previewPriceListImport(Buffer.from(await file.arrayBuffer()),source,name,currency,description,user.id));}catch(error){return fail(error);}}
+export async function PUT(req:Request){try{const user=await requireUser(true);const body=await readBody(req);return ok(await commitPriceListImport(idSchema.parse(body.previewId),user.id));}catch(error){return fail(error);}}

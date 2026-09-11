@@ -144,6 +144,7 @@ export interface CompanySettings {
   company_name: string;
   company_tagline?: string;
   logo_path?: string;
+  terms_template_version?: string;
   address: string;
   email: string;
   phone: string;
