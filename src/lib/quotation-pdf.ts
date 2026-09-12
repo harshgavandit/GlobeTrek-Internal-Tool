@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Quotation } from '@/types';
 import { quotationBankAccounts, quotationTermSections, QuotationTermSection } from './quotation-terms';
+import { quotationTotalRows } from './quotation-commercial';
 import { productDescriptionDetail } from './product-description';
 
 const NAVY:[number,number,number]=[17,42,70];
@@ -26,6 +27,30 @@ async function logoData(q:Quotation){
  try{return (await readFile(path.join(process.cwd(),'public',...logo.split('/').filter(Boolean)))).toString('base64');}catch{return undefined;}
 }
 
+async function renderExportQuotationPDF(q:Quotation){
+ const doc=new jsPDF({unit:'pt',format:'letter',orientation:'portrait',putOnlyUsedFonts:true,compress:true});
+ fontData??=readFile(path.join(process.cwd(),'assets/fonts/DejaVuSans.ttf')).then(buffer=>buffer.toString('base64'));
+ doc.addFileToVFS('DejaVuSans.ttf',await fontData);doc.addFont('DejaVuSans.ttf','DejaVu','normal');doc.addFont('DejaVuSans.ttf','DejaVu','bold');
+ const logo=await logoData(q),side=38,top=92,pageWidth=612,pageHeight=792,contentWidth=536,bottom=742;
+ const exportAmount=(value:number)=>`$${currencyAmount(value,'USD')}`;
+ const breakIfNeeded=(y:number,height:number)=>{if(y+height<=bottom)return y;doc.addPage();return top;};
+ let y=top+2;doc.setFont('DejaVu','bold');doc.setFontSize(8.2);doc.setTextColor(...BLACK);doc.text(`Reference No- ${q.quotation_number}`,side,y);doc.text(`Date: ${longDate(q.quotation_date).replace(/^(\d{2}) /,'$1 ')}`,pageWidth-side,y,{align:'right'});
+ y+=24;doc.setFontSize(9);doc.text('To,',side,y);y+=14;doc.text(q.customer_name,side+3,y);y+=12;doc.setFont('DejaVu','normal');
+ const customer=[q.customer_address,q.customer_city,q.customer_country].filter(Boolean).join(', ');if(customer){const lines=doc.splitTextToSize(customer,330);doc.text(lines,side+3,y);y+=lines.length*10;}
+ if(q.customer_phone){doc.text(`Tel No.s : ${q.customer_phone}`,side+3,y);y+=10;}if(q.customer_email){doc.text(`Email : ${q.customer_email}`,side+3,y);y+=10;}
+ y+=18;doc.setFont('DejaVu','bold');doc.text(`Ref: ${q.customer_reference?.trim()||q.quotation_number}`,side,y);y+=24;doc.setFont('DejaVu','normal');doc.text('Dear Sir,',side,y);y+=22;doc.text('With reference to above, we are pleased to submit our quotation as follows.',side,y);y+=13;
+ const descriptionWidth=312;const layouts=q.items.map(item=>{doc.setFontSize(7.8);doc.setFont('DejaVu','bold');const title=doc.splitTextToSize(item.product_name,descriptionWidth);doc.setFont('DejaVu','normal');const details=[item.model_number?`Model: ${item.model_number}`:'',productDescriptionDetail(item.product_name,item.description)].filter(Boolean).join('\n');const detail=details?details.split('\n').flatMap(line=>doc.splitTextToSize(line,descriptionWidth)):[];return{title,detail,height:Math.max(26,7+(title.length+detail.length)*9)};});
+ autoTable(doc,{startY:y,margin:{left:side,right:side,top,bottom:50},tableWidth:contentWidth,theme:'grid',showHead:'everyPage',rowPageBreak:'avoid',head:[['SR.\nNO.','PRODUCT DESCRIPTION','QTY','UNIT COST EX-WORKS MUMBAI IN USD','TOTAL AMOUNT USD']],body:q.items.map((item,index)=>[String(index+1).padStart(2,'0'),'',quantity(item.quantity),exportAmount(item.unit_price),exportAmount(item.line_total)]),styles:{font:'DejaVu',fontSize:7.8,textColor:BLACK,lineColor:[0,0,0],lineWidth:0.55,cellPadding:3.5,valign:'top',overflow:'linebreak'},headStyles:{fillColor:NAVY,textColor:[255,255,255],font:'DejaVu',fontStyle:'bold',fontSize:7.3,halign:'center',valign:'middle',minCellHeight:38,lineColor:[0,0,0],lineWidth:0.7},columnStyles:{0:{cellWidth:34,halign:'center',fontStyle:'bold'},1:{cellWidth:320},2:{cellWidth:32,halign:'center',fontStyle:'bold'},3:{cellWidth:75,halign:'right',fontStyle:'bold'},4:{cellWidth:75,halign:'right',fontStyle:'bold'}},didParseCell:data=>{if(data.section==='body'&&data.column.index===1){data.cell.text=[''];data.cell.styles.minCellHeight=layouts[data.row.index].height;}},didDrawCell:data=>{if(data.section==='body'&&data.column.index===1){const layout=layouts[data.row.index];let lineY=data.cell.y+10;doc.setFontSize(7.8);doc.setTextColor(...BLACK);doc.setFont('DejaVu','bold');for(const line of layout.title){doc.text(line,data.cell.x+4,lineY);lineY+=9;}doc.setFont('DejaVu','normal');for(const line of layout.detail){doc.text(line,data.cell.x+4,lineY);lineY+=9;}}}});
+ const labels:Record<string,string>={'Sub Total':'Sub-Total','Packing Charge':'Packing Apx','Freight Charge':'Freight'};const totals=quotationTotalRows(q).map(([label,value])=>[labels[label]||label,exportAmount(value)]);
+ autoTable(doc,{startY:lastTableY(doc),margin:{left:side,right:side,top,bottom:50},tableWidth:contentWidth,theme:'grid',body:totals,styles:{font:'DejaVu',fontStyle:'bold',fontSize:7.8,textColor:BLACK,lineColor:[0,0,0],lineWidth:0.55,cellPadding:3.5},columnStyles:{0:{cellWidth:461,halign:'right'},1:{cellWidth:75,halign:'center'}}});
+ y=breakIfNeeded(lastTableY(doc)+14,34);doc.setFillColor(...NAVY);doc.rect(side,y,contentWidth,17,'F');doc.setFont('DejaVu','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text('TERMS & CONDITIONS',pageWidth/2,y+11,{align:'center'});y+=22;
+ const terms=quotationTermSections(q);autoTable(doc,{startY:y,margin:{left:side,right:side,top,bottom:50},tableWidth:contentWidth,theme:'plain',rowPageBreak:'avoid',body:terms.map(section=>[`${section.number})${section.title}`,section.bullets.join('\n')]),styles:{font:'DejaVu',fontSize:7.5,textColor:BLACK,overflow:'linebreak',cellPadding:{top:3,right:2,bottom:3,left:0},valign:'top'},columnStyles:{0:{cellWidth:82,fontStyle:'bold'},1:{cellWidth:454}}});
+ y=breakIfNeeded(lastTableY(doc)+14,100);doc.setFont('DejaVu','normal');doc.setFontSize(7.8);doc.setTextColor(...BLACK);doc.text('If you require any other clarification, please do not hesitate to contact us.',side,y);y+=12;doc.text('Thanking you, and assuring you of our best services and attention at all times we remain.',side,y);y+=24;doc.setFont('DejaVu','bold');doc.text('Yours faithfully,',side,y);y+=28;doc.text(q.created_by_name,side,y);y+=10;doc.text(q.company_snapshot.company_name,side,y);y+=10;doc.text(`Mob. ${q.company_snapshot.phone}`,side,y);
+ const footer=[`Add: ${q.company_snapshot.address}`,`Mobile - ${q.company_snapshot.phone}`,`Email- ${q.company_snapshot.email}${q.company_snapshot.website?` Web- ${q.company_snapshot.website}`:''}`];
+ for(let page=1;page<=doc.getNumberOfPages();page++){doc.setPage(page);doc.setFillColor(255,255,255);doc.rect(0,0,pageWidth,86,'F');if(logo)doc.addImage(logo,'PNG',side,14,150,56);doc.setFont('times','bold');doc.setFontSize(16);doc.setTextColor(0,0,0);doc.text('SALES QUOTATION',pageWidth-side,56,{align:'right'});doc.setDrawColor(...NAVY);doc.setLineWidth(1);doc.line(side,80,pageWidth-side,80);doc.setFillColor(...NAVY);doc.rect(side,pageHeight-40,contentWidth,28,'F');doc.setFont('DejaVu','bold');doc.setFontSize(5.6);doc.setTextColor(255,255,255);footer.forEach((line,index)=>doc.text(line,pageWidth/2,pageHeight-33+index*7,{align:'center',maxWidth:contentWidth-10}));}
+ return new Uint8Array(doc.output('arraybuffer'));
+}
+
 function pageBreakIfNeeded(doc:jsPDF,y:number,height:number){
  if(y+height<=BOTTOM)return y;
  doc.addPage();
@@ -33,6 +58,7 @@ function pageBreakIfNeeded(doc:jsPDF,y:number,height:number){
 }
 
 export async function renderReferenceQuotationPDF(q:Quotation){
+ if(q.quotation_type==='export')return renderExportQuotationPDF(q);
  const doc=new jsPDF({unit:'pt',format:'a4',orientation:'portrait',putOnlyUsedFonts:true,compress:true});
  fontData??=readFile(path.join(process.cwd(),'assets/fonts/DejaVuSans.ttf')).then(buffer=>buffer.toString('base64'));
  doc.addFileToVFS('DejaVuSans.ttf',await fontData);doc.addFont('DejaVuSans.ttf','DejaVu','normal');doc.addFont('DejaVuSans.ttf','DejaVu','bold');
@@ -70,16 +96,7 @@ export async function renderReferenceQuotationPDF(q:Quotation){
   didDrawCell:data=>{if(data.section==='body'&&data.column.index===1){const layout=layouts[data.row.index];let lineY=data.cell.y+11;doc.setFontSize(8.4);doc.setTextColor(...BLACK);doc.setFont('DejaVu','bold');for(const line of layout.title){doc.text(line,data.cell.x+4,lineY);lineY+=10;}doc.setFont('DejaVu','normal');for(const line of layout.detail){doc.text(line,data.cell.x+4,lineY);lineY+=10;}}}
  });
 
- const totals:[string,string][]=[
-  ['Sub Total',currencyAmount(q.subtotal,q.currency)],
-  ['Packing Charge',currencyAmount(q.packaging_charges,q.currency)],
-  ['Freight Charge',currencyAmount(q.freight_charges,q.currency)],
-  ['Insurance',currencyAmount(q.insurance_charges,q.currency)],
-  ['Other Charges',currencyAmount(q.other_charges,q.currency)],
-  ['Discount',currencyAmount(q.discount_amount,q.currency)],
-  [`GST @${q.tax_percent}%`,currencyAmount(q.tax_amount,q.currency)],
-  ['Grand Total',currencyAmount(q.total_amount,q.currency)]
- ];
+ const totals:[string,string][]=quotationTotalRows(q).map(([label,value])=>[label,currencyAmount(value,q.currency)]);
  autoTable(doc,{startY:lastTableY(doc),margin:{left:SIDE,right:SIDE,top:TOP,bottom:52},tableWidth:CONTENT_WIDTH,theme:'grid',body:totals,
   styles:{font:'DejaVu',fontStyle:'bold',fontSize:8.5,textColor:BLACK,lineColor:[0,0,0],lineWidth:0.55,cellPadding:4},
   columnStyles:{0:{cellWidth:429,halign:'right'},1:{cellWidth:70,halign:'center'}}});

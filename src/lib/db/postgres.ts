@@ -6,6 +6,7 @@ import { Quotation, QuotationFormState, UserProfile, CompanySettings, Product, C
 import { recalculateQuotation } from '../quotation-calculator';
 import { businessDate } from '../business-date';
 import { productDescriptionDetail } from '../product-description';
+import { convertListPrice, quotationExchangeRate, sourcePriceFromSnapshot } from '../quotation-currency';
 
 const publicUser='id,email,full_name,role,created_at';
 type Queryable=Pick<PoolClient,'query'>;
@@ -58,24 +59,31 @@ export class ServerDatabaseManager {
  async getQuotationById(id:string,c:Queryable=getPool()):Promise<Quotation>{const r=(await c.query('SELECT snapshot FROM quotations WHERE id=$1 AND deleted_at IS NULL',[id])).rows[0];if(!r)throw new AppError(404,'Quotation not found');return r.snapshot;}
  async buildQuotation(c:PoolClient,input:unknown,actor:UserProfile,old?:Quotation,duplicate=false,preview=false):Promise<Quotation>{
   const form=quoteFormSchema.parse(input);const customer=unpack(await required(c,'customers',form.customer_id));const pl=await required(c,'price_lists',form.price_list_id);
-  if(pl.currency!==form.currency)throw new AppError(400,'Quotation currency does not match the selected price list');
+  let exchangeRate:number;
+  try{exchangeRate=quotationExchangeRate(pl.currency,form.currency,form.exchange_rate);}catch(error){throw new AppError(400,error instanceof Error?error.message:'Invalid quotation currency conversion');}
+  if(form.quotation_type==='export'&&form.currency!=='USD')throw new AppError(400,'Export quotations must use USD pricing');
   if(!pl.is_active && (!old||old.price_list_id!==pl.id||duplicate))throw new AppError(409,'Price list is inactive');
   const products=await this.getProducts(c);const id=duplicate||!old?randomUUID():old.id;const now=new Date().toISOString();
   const items=form.items.map((item,index)=>{
    const retained=old?.price_list_id===form.price_list_id?old.items.find(v=>v.product_id===item.product_id):undefined;
-   if(retained){const merged={...retained,...item};return {...merged,description:productDescriptionDetail(merged.product_name,merged.description),master_price:retained.master_price,id:duplicate?randomUUID():retained.id,quotation_id:id};}
+   if(retained){const sourceMaster=retained.source_master_price??sourcePriceFromSnapshot(retained.master_price,old?.price_list_currency||pl.currency,old?.currency||pl.currency,old?.exchange_rate);const expectedMaster=convertListPrice(sourceMaster,pl.currency,form.currency,exchangeRate);if(expectedMaster!==item.master_price)throw new AppError(409,`Converted master price changed for ${retained.sku}. Refresh the pricing context.`);const merged={...retained,...item};return {...merged,description:productDescriptionDetail(merged.product_name,merged.description),source_master_price:sourceMaster,master_price:expectedMaster,id:duplicate?randomUUID():retained.id,quotation_id:id};}
    const product=products.find(p=>p.id===item.product_id);const price=product?.prices?.find(p=>p.price_list_id===form.price_list_id);
    if(!product?.is_active||!price)throw new AppError(409,`Product ${index+1} has no active price in this list`);
-   if(price.unit_price!==item.master_price)throw new AppError(409,`Price changed for ${product.sku}. Refresh products and review the master price.`);
-   return {...item,id:randomUUID(),quotation_id:id,product_name:product.name,sku:product.sku,description:productDescriptionDetail(product.name,item.description??product.description),model_number:product.model_number,master_price:price.unit_price,line_total:0,created_at:now};
+   const expectedMaster=convertListPrice(price.unit_price,pl.currency,form.currency,exchangeRate);
+   if(expectedMaster!==item.master_price)throw new AppError(409,`Price or conversion rate changed for ${product.sku}. Refresh products and review the master price.`);
+   return {...item,id:randomUUID(),quotation_id:id,product_name:product.name,sku:product.sku,description:productDescriptionDetail(product.name,item.description??product.description),model_number:product.model_number,source_master_price:price.unit_price,master_price:expectedMaster,line_total:0,created_at:now};
   });
   const calculated=recalculateQuotation({...form,items,subtotal:0,tax_amount:0,total_amount:0} as QuotationFormState);
   if(calculated.total_amount<0||calculated.total_amount>999999999999)throw new AppError(400,'Discount exceeds the chargeable amount or total is too large');
-  const company=old?.company_snapshot||await this.getSettings(c);
+  const company=old&&(old.quotation_type||'indian')===form.quotation_type?old.company_snapshot:await this.getSettings(c);
+  if(form.quotation_type==='export'){
+   const exportAccount=company.bank_accounts?.[0];
+   if(!exportAccount?.account_no||!exportAccount.ifsc||!(exportAccount.swift||company.bank_swift))throw new AppError(409,'Complete the primary bank account and SWIFT code in Settings before saving an export quotation');
+  }
   let numbering=old?{quotation_number:old.quotation_number,financial_year:old.financial_year,sequence_number:old.sequence_number}:{quotation_number:'PREVIEW - NOT SAVED',financial_year:'',sequence_number:0};
   if((!old||duplicate)&&!preview){const india=new Date(Date.now()+330*60000);const start=india.getUTCFullYear()-(india.getUTCMonth()<3?1:0);const fy=`${start}-${String(start+1).slice(-2)}`;const seq=(await c.query('INSERT INTO quotation_sequences VALUES($1,1) ON CONFLICT(financial_year) DO UPDATE SET sequence_number=quotation_sequences.sequence_number+1 RETURNING sequence_number',[fy])).rows[0].sequence_number;const settings=await this.getSettings(c);numbering={quotation_number:`${settings.quotation_prefix}/${fy}/${String(seq).padStart(4,'0')}`,financial_year:fy,sequence_number:seq};}
   const customerSnapshot=old && old.customer_id===customer.id ? Object.fromEntries(Object.entries(old).filter(([key])=>key.startsWith('customer_'))) : Object.fromEntries(['name','contact_person','address','city','country','email','phone','tax_number'].map(key=>['customer_'+key,customer[key]]));
-  return {...calculated,...customerSnapshot,...numbering,id,discount_amount:form.discount_amount,items:calculated.items,customer_id:form.customer_id,price_list_name:old && old.price_list_id===pl.id?old.price_list_name:pl.name,company_snapshot:company,status:duplicate?'draft':old?.status||'draft',revision:duplicate?1:(old?.revision||0)+1,created_by_user_id:duplicate?actor.id:old?.created_by_user_id||actor.id,created_by_name:duplicate?actor.full_name:old?.created_by_name||actor.full_name,created_at:duplicate?now:old?.created_at||now,updated_at:now} as Quotation;
+  return {...calculated,...customerSnapshot,...numbering,id,exchange_rate:exchangeRate,price_list_currency:pl.currency,items:calculated.items,customer_id:form.customer_id,price_list_name:old && old.price_list_id===pl.id?old.price_list_name:pl.name,company_snapshot:company,status:duplicate?'draft':old?.status||'draft',revision:duplicate?1:(old?.revision||0)+1,created_by_user_id:duplicate?actor.id:old?.created_by_user_id||actor.id,created_by_name:duplicate?actor.full_name:old?.created_by_name||actor.full_name,created_at:duplicate?now:old?.created_at||now,updated_at:now} as Quotation;
  }
  async persistQuote(c:PoolClient,q:Quotation,actor:string,requestId:string,isNew:boolean){
   if(isNew)await c.query('INSERT INTO quotations(id,quotation_number,financial_year,sequence_number,customer_id,price_list_id,created_by_user_id,request_id,status,subtotal,total_amount,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',[q.id,q.quotation_number,q.financial_year,q.sequence_number,q.customer_id,q.price_list_id,q.created_by_user_id,requestId,q.status,q.subtotal,q.total_amount,JSON.stringify(q)]);

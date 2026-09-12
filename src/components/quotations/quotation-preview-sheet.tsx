@@ -14,6 +14,7 @@ import {
   type QuotationTermSection,
 } from '@/lib/quotation-terms';
 import type { Quotation } from '@/types';
+import { quotationTotalRows } from '@/lib/quotation-commercial';
 
 interface QuotationPreviewSheetProps {
   quotation: Quotation;
@@ -46,7 +47,8 @@ function longDate(value: string) {
   }).format(date).toUpperCase();
 }
 
-function Terms({ sections }: { sections: QuotationTermSection[] }) {
+function Terms({ sections, exportFormat = false }: { sections: QuotationTermSection[]; exportFormat?: boolean }) {
+  if(exportFormat)return <div className="space-y-2">{sections.map(section=><section key={section.number} className="grid break-inside-avoid grid-cols-[130px_1fr] gap-3 text-[11px] leading-[1.45]"><h3 className="font-bold">{section.number}){section.title}</h3><div>{section.bullets.map((bullet,index)=><p key={index}>{bullet}</p>)}</div></section>)}</div>;
   return (
     <div className="space-y-4">
       {sections.map((section) => (
@@ -65,11 +67,12 @@ function Terms({ sections }: { sections: QuotationTermSection[] }) {
 
 export function QuotationPreviewSheet({ quotation, showActions = true }: QuotationPreviewSheetProps) {
   const settings = quotation.company_snapshot;
+  const isExport=quotation.quotation_type==='export';
   const terms = quotationTermSections(quotation);
-  const paymentIndex = terms.findIndex((section) => section.number === 10);
+  const paymentIndex = isExport?-1:terms.findIndex((section) => section.number === 10);
   const termsBeforeBank = paymentIndex >= 0 ? terms.slice(0, paymentIndex + 1) : terms;
   const termsAfterBank = paymentIndex >= 0 ? terms.slice(paymentIndex + 1) : [];
-  const bankAccounts = quotationBankAccounts(quotation);
+  const bankAccounts = isExport?[]:quotationBankAccounts(quotation);
   const bankAccountRows = Array.from(
     { length: Math.ceil(bankAccounts.length / 2) },
     (_, index) => bankAccounts.slice(index * 2, index * 2 + 2),
@@ -109,16 +112,9 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
     quotation.customer_country,
   ].filter(Boolean).join(', ');
 
-  const totals = [
-    ['Sub Total', quotation.subtotal],
-    ['Packing Charge', quotation.packaging_charges],
-    ['Freight Charge', quotation.freight_charges],
-    ['Insurance', quotation.insurance_charges],
-    ['Other Charges', quotation.other_charges],
-    ['Discount', quotation.discount_amount],
-    [`GST @${quotation.tax_percent}%`, quotation.tax_amount],
-    ['Grand Total', quotation.total_amount],
-  ] as const;
+  const totals = quotationTotalRows(quotation);
+  const totalLabels:Record<string,string>=isExport?{'Sub Total':'Sub-Total','Packing Charge':'Packing Apx','Freight Charge':'Freight'}:{};
+  const displayAmount=(value:number)=>`${isExport?'$':''}${amount(value,quotation.currency)}`;
 
   return (
     <div className="space-y-4">
@@ -146,8 +142,8 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
             </header>
 
             <div className="mt-3 flex justify-between gap-6 text-[12px] font-bold">
-              <p>REFERENCE NO- {quotation.quotation_number}</p>
-              <p>DATE: {longDate(quotation.quotation_date)}</p>
+              <p>{isExport?'Reference No-':'REFERENCE NO-'} {quotation.quotation_number}</p>
+              <p>{isExport?'Date:':'DATE:'} {longDate(quotation.quotation_date)}</p>
             </div>
 
             <section className="mt-7 text-[12px] leading-[1.55]">
@@ -192,15 +188,15 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
                         {detail && <p className="mt-1 whitespace-pre-line">{detail}</p>}
                       </td>
                       <td className="border border-black px-1 py-2 text-center align-top font-bold">{quantity(item.quantity)}</td>
-                      <td className="border border-black px-1.5 py-2 text-right align-top font-bold tabular-nums">{amount(item.unit_price, quotation.currency)}</td>
-                      <td className="border border-black px-1.5 py-2 text-right align-top font-bold tabular-nums">{amount(item.line_total, quotation.currency)}</td>
+                      <td className="border border-black px-1.5 py-2 text-right align-top font-bold tabular-nums">{displayAmount(item.unit_price)}</td>
+                      <td className="border border-black px-1.5 py-2 text-right align-top font-bold tabular-nums">{displayAmount(item.line_total)}</td>
                     </tr>
                   );
                 })}
                 {totals.map(([label, value]) => (
                   <tr key={label} className="break-inside-avoid font-bold">
-                    <td colSpan={4} className="border border-black px-2 py-1.5 text-right">{label}</td>
-                    <td className="border border-black px-1.5 py-1.5 text-center tabular-nums">{amount(value, quotation.currency)}</td>
+                    <td colSpan={4} className="border border-black px-2 py-1.5 text-right">{totalLabels[label]||label}</td>
+                    <td className="border border-black px-1.5 py-1.5 text-center tabular-nums">{displayAmount(value)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -210,7 +206,7 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
               TERMS &amp; CONDITIONS
             </h2>
             <div className="mt-3">
-              <Terms sections={termsBeforeBank} />
+              <Terms sections={termsBeforeBank} exportFormat={isExport} />
 
               {bankAccounts.length > 0 && (
                 <section className="mt-4 break-inside-avoid">
@@ -234,25 +230,25 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
                 </section>
               )}
 
-              {termsAfterBank.length > 0 && <div className="mt-4"><Terms sections={termsAfterBank} /></div>}
+              {termsAfterBank.length > 0 && <div className="mt-4"><Terms sections={termsAfterBank} exportFormat={isExport} /></div>}
             </div>
 
             <section className="mt-7 text-[11px] leading-[1.55]">
-              <p>If you require any further clarification or additional information, please feel free to contact us at your convenience.</p>
-              <p className="mt-2">Thanking you, and always assuring you of our best services and attention, we remain.</p>
+              <p>{isExport?'If you require any other clarification, please do not hesitate to contact us.':'If you require any further clarification or additional information, please feel free to contact us at your convenience.'}</p>
+              <p className="mt-2">{isExport?'Thanking you, and assuring you of our best services and attention at all times we remain.':'Thanking you, and always assuring you of our best services and attention, we remain.'}</p>
               <div className="mt-4 font-bold">
                 <p>Yours faithfully,</p>
                 <div className="h-10" aria-hidden="true" />
                 <p>{quotation.created_by_name}</p>
-                <p>(Authorized Representative)</p>
-                <p>Contact: {settings.phone}</p>
+                {!isExport&&<p>(Authorized Representative)</p>}
+                <p>{isExport?'Mob. ':'Contact: '}{settings.phone}</p>
                 <p>{settings.company_name}</p>
               </div>
             </section>
           </div>
 
           <footer className="mx-12 mb-4 px-3 py-2 text-center text-[9px] font-bold leading-[1.4] text-white" style={{ backgroundColor: NAVY }}>
-            <p>Address: {settings.address}</p>
+            <p>{isExport?'Add:':'Address:'} {settings.address}</p>
             <p>Mobile - {settings.phone}</p>
             <p>Email - {settings.email}{settings.website ? `   Web - ${settings.website}` : ''}</p>
           </footer>

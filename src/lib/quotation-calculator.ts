@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
 import { QuotationFormState } from '@/types';
+import { isChargeVisible, normalizeVisibleCharges } from './quotation-commercial';
 
 export function calculateLineItemTotal(
   unitPrice: number,
@@ -35,18 +36,19 @@ export function recalculateQuotation(formState: QuotationFormState): QuotationFo
     new Decimal(0)
   );
 
-  const packaging = new Decimal(formState.packaging_charges || 0);
-  const freight = new Decimal(formState.freight_charges || 0);
-  const insurance = new Decimal(formState.insurance_charges || 0);
-  const other = new Decimal(formState.other_charges || 0);
-  const taxRate = new Decimal(formState.tax_percent || 0);
+  const packaging = new Decimal(isChargeVisible(formState, 'packaging_charges') ? formState.packaging_charges || 0 : 0);
+  const freight = new Decimal(isChargeVisible(formState, 'freight_charges') ? formState.freight_charges || 0 : 0);
+  const insurance = new Decimal(isChargeVisible(formState, 'insurance_charges') ? formState.insurance_charges || 0 : 0);
+  const other = new Decimal(isChargeVisible(formState, 'other_charges') ? formState.other_charges || 0 : 0);
+  const discount = new Decimal(isChargeVisible(formState, 'discount_amount') ? formState.discount_amount || 0 : 0);
+  const taxRate = new Decimal(isChargeVisible(formState, 'tax_percent') ? formState.tax_percent || 0 : 0);
 
   const taxableAmount = subtotalDecimal
     .plus(packaging)
     .plus(freight)
     .plus(insurance)
     .plus(other)
-    .minus(new Decimal(formState.discount_amount || 0));
+    .minus(discount);
 
   const taxAmountDecimal = taxableAmount
     .times(taxRate.dividedBy(100))
@@ -58,6 +60,13 @@ export function recalculateQuotation(formState: QuotationFormState): QuotationFo
 
   return {
     ...formState,
+    visible_charges: normalizeVisibleCharges(formState.visible_charges),
+    packaging_charges: packaging.toNumber(),
+    freight_charges: freight.toNumber(),
+    insurance_charges: insurance.toNumber(),
+    other_charges: other.toNumber(),
+    discount_amount: discount.toNumber(),
+    tax_percent: taxRate.toNumber(),
     items: recalculatedItems,
     subtotal: subtotalDecimal.toNumber(),
     tax_amount: taxAmountDecimal.toNumber(),

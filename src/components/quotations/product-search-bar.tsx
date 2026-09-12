@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Check, Plus, RefreshCw, Search } from 'lucide-react';
+import { Minus, Plus, RefreshCw, Search, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   EmptyState,
@@ -13,17 +13,22 @@ import { Category, Product, price_lists as PriceList } from '@/types';
 import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/utils';
 import { useDebouncedValue } from '@/lib/ui-hooks';
+import { convertListPrice } from '@/lib/quotation-currency';
 
 interface ProductSearchBarProps {
   selectedPriceListId: string;
-  onAddProduct: (product: Product, price: number) => void;
-  excludedProductIds?: string[];
+  quotationCurrency: string;
+  exchangeRate: number;
+  onAddProduct: (product: Product, price: number, quantity: number, sourcePrice: number) => void;
+  selectedQuantities?: Record<string, number>;
 }
 
 export function ProductSearchBar({
   selectedPriceListId,
+  quotationCurrency,
+  exchangeRate,
   onAddProduct,
-  excludedProductIds = [],
+  selectedQuantities = {},
 }: ProductSearchBarProps) {
   const [query, setQuery] = React.useState('');
   const debounced = useDebouncedValue(query);
@@ -34,6 +39,7 @@ export function ProductSearchBar({
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
   const [active, setActive] = React.useState(0);
+  const [quantities, setQuantities] = React.useState<Record<string, number>>({});
   const input = React.useRef<HTMLInputElement>(null);
   const resultListId = React.useId();
 
@@ -76,16 +82,26 @@ export function ProductSearchBar({
     [products, category, debounced, searchActive],
   );
   const results = matches.slice(0, 6);
-  const currency = lists.find((list) => list.id === selectedPriceListId)?.currency;
+  const selectedList = lists.find((list) => list.id === selectedPriceListId);
 
   React.useEffect(() => setActive(0), [debounced, category]);
+
+  const quantityFor = (productId: string) => quantities[productId] || 1;
+  const setQuantity = (productId: string, value: number) => {
+    setQuantities((current) => ({
+      ...current,
+      [productId]: Math.max(1, Math.min(1_000_000, Math.trunc(value) || 1)),
+    }));
+  };
 
   const add = (product: Product) => {
     const price = product.prices?.find(
       (candidate) => candidate.price_list_id === selectedPriceListId,
     );
-    if (price && !excludedProductIds.includes(product.id)) {
-      onAddProduct(product, price.unit_price);
+    if (price) {
+      const converted=convertListPrice(price.unit_price,selectedList?.currency||quotationCurrency,quotationCurrency,exchangeRate);
+      onAddProduct(product,converted,quantityFor(product.id),price.unit_price);
+      setQuantity(product.id, 1);
       input.current?.focus();
     }
   };
@@ -172,7 +188,9 @@ export function ProductSearchBar({
             const price = product.prices?.find(
               (candidate) => candidate.price_list_id === selectedPriceListId,
             );
-            const added = excludedProductIds.includes(product.id);
+            const selectedQuantity = selectedQuantities[product.id] || 0;
+            const addQuantity = quantityFor(product.id);
+            const convertedPrice=price?convertListPrice(price.unit_price,selectedList?.currency||quotationCurrency,quotationCurrency,exchangeRate):undefined;
             return (
               <div
                 key={product.id}
@@ -195,20 +213,32 @@ export function ProductSearchBar({
                 <div className="shrink-0 text-right">
                   <p className="text-[11px] text-muted-foreground">Master price</p>
                   <p className="text-xs font-medium tabular-nums">
-                    {price ? formatCurrency(price.unit_price, currency) : 'Not priced'}
+                    {convertedPrice!==undefined ? formatCurrency(convertedPrice, quotationCurrency) : 'Not priced'}
                   </p>
+                  {selectedQuantity > 0 && (
+                    <p className="mt-1 text-[10px] font-medium text-primary">
+                      In quote: {selectedQuantity}
+                    </p>
+                  )}
                 </div>
-                <Button
-                  variant={added ? 'ghost' : 'outline'}
-                  size="sm"
-                  className="shrink-0 px-2"
-                  aria-label={`Add ${product.name}`}
-                  disabled={added || !price || !selectedPriceListId}
-                  onClick={() => add(product)}
-                >
-                  {added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
-                  <span className="ml-1 hidden sm:inline">{added ? 'Added' : 'Add'}</span>
-                </Button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex h-8 items-center overflow-hidden rounded-md border bg-white" aria-label={`Quantity of ${product.name} to add`}>
+                    <button type="button" className="flex h-full w-7 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40" disabled={addQuantity <= 1} onClick={() => setQuantity(product.id, addQuantity - 1)} aria-label={`Decrease ${product.name} quantity`}><Minus className="size-3" /></button>
+                    <input type="number" min="1" max="1000000" step="1" value={addQuantity} onChange={(event) => setQuantity(product.id, Number(event.target.value))} className="h-full w-10 border-x bg-transparent text-center text-xs tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label={`${product.name} quantity`} />
+                    <button type="button" className="flex h-full w-7 items-center justify-center text-muted-foreground hover:bg-muted" onClick={() => setQuantity(product.id, addQuantity + 1)} aria-label={`Increase ${product.name} quantity`}><Plus className="size-3" /></button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 px-2"
+                    aria-label={`Add ${addQuantity} of ${product.name}`}
+                    disabled={!price || !selectedPriceListId}
+                    onClick={() => add(product)}
+                  >
+                    <ShoppingCart className="size-3.5" />
+                    <span className="ml-1 hidden lg:inline">Add</span>
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -218,7 +248,7 @@ export function ProductSearchBar({
       {searchActive && results.length > 0 && (
         <p className="text-[11px] text-muted-foreground" aria-live="polite">
           {matches.length > 6 ? `Showing 6 of ${matches.length}. Refine your search. ` : ''}
-          Use ↑ ↓ to choose a result and Enter to add. Prices are checked again when saving.
+          Use ↑ ↓ to choose a result and Enter to add the selected quantity. Adding an existing product increases its quantity. Prices are checked again when saving.
         </p>
       )}
     </div>

@@ -5,6 +5,15 @@ export const STANDARD_TERMS_VERSION='globetrek-2026-09';
 export interface QuotationTermSection {number:number;title:string;bullets:string[]}
 export interface QuotationBankAccount {bank_name:string;account_name:string;account_no:string;ifsc:string;branch?:string;swift?:string}
 
+export const EXPORT_QUOTATION_DEFAULTS={
+ payment_terms:'A)50% advance along with PO & Balance 50% against Proforma Invoice prior to dispatch\nB)100% advance through Bank /Cash (bank details given below)',
+ delivery_terms:'Within 3-4 weeks after receipt of Purchase Order along with Payment.',
+ warranty_terms:'The instrument is warranted against any manufacturing defect for ‘One Year’ from the date of delivery, if it is operated under normal working conditions. The defects due to power fluctuation, improper earthing, false operation of machine, over loading etc. Will not be covered under this warranty.',
+ validity_terms:'The above Quotation is valid for 30 days from date of Quotation',
+ freight_terms:'Freight will be charge extra at actual as per the customers preferred transport service.',
+ notes:'All clerical and typographical errors are subject to correction.'
+} as const;
+
 export function quotationBankAccounts(quotation:Quotation):QuotationBankAccount[]{
  const settings=quotation.company_snapshot;
  const configured=(settings.bank_accounts||[]).filter(account=>account.bank_name||account.account_no||account.ifsc);
@@ -68,6 +77,30 @@ const standardSections=(quotation:Quotation):QuotationTermSection[]=>[
  ]}
 ];
 
+const exportSections=(quotation:Quotation):QuotationTermSection[]=>{
+ const account=quotationBankAccounts(quotation)[0];
+ return [
+  {number:1,title:'PRICES',bullets:['Each unit is quoted in USD Ex-Work Mumbai. All Export worthy Packing & Forwarding will be charge extra.']},
+  {number:2,title:'FREIGHT',bullets:[quotation.freight_terms||EXPORT_QUOTATION_DEFAULTS.freight_terms]},
+  {number:3,title:'VALIDITY',bullets:[quotation.validity_terms||EXPORT_QUOTATION_DEFAULTS.validity_terms]},
+  {number:4,title:'DELIVERY',bullets:[quotation.delivery_terms||EXPORT_QUOTATION_DEFAULTS.delivery_terms]},
+  {number:5,title:'PAYMENT',bullets:(quotation.payment_terms||EXPORT_QUOTATION_DEFAULTS.payment_terms).split(/\r?\n/)},
+  {number:6,title:'BANK DETAIL',bullets:account?[
+   `Company name: ${account.account_name||quotation.company_snapshot.company_name}`,
+   `Account number: ${account.account_no}`,
+   `IFSC: ${account.ifsc}`,
+   `SWIFT code: ${account.swift||quotation.company_snapshot.bank_swift||''}`,
+   `Bank name: ${account.bank_name}`,
+   `Branch: ${account.branch||''}`
+  ]:[]},
+  {number:7,title:'LOCAL LEVIES',bullets:['Local Levies/ Octroi if applicable will have to be borne by the customer.']},
+  {number:8,title:'WARRANTY',bullets:[quotation.warranty_terms||EXPORT_QUOTATION_DEFAULTS.warranty_terms]},
+  {number:9,title:'COMMISSIONING',bullets:['Erection and commissioning of the machine / equipment will be charged extra. (if applicable)']},
+  {number:10,title:'BANK CHARGES',bullets:['On your account']},
+  {number:11,title:'ERRORS',bullets:[quotation.notes||EXPORT_QUOTATION_DEFAULTS.notes]}
+ ];
+};
+
 const legacySections=(quotation:Quotation):QuotationTermSection[]=>[
  {number:1,title:'Validity of Quotation',bullets:[quotation.validity_terms]},
  {number:2,title:'Goods and Services Tax (GST)',bullets:[`GST @${quotation.tax_percent}%: ${quotation.currency} ${quotation.tax_amount.toFixed(2)}`,quotation.company_snapshot.gstin?`GSTIN: ${quotation.company_snapshot.gstin}`:'']},
@@ -81,6 +114,13 @@ const legacySections=(quotation:Quotation):QuotationTermSection[]=>[
 ];
 
 export function quotationTermSections(quotation:Quotation):QuotationTermSection[]{
- const sections=quotation.company_snapshot.terms_template_version===STANDARD_TERMS_VERSION?standardSections(quotation):legacySections(quotation);
- return sections.map(section=>({...section,bullets:section.bullets.map(value=>value.trim()).filter(Boolean)})).filter(section=>section.bullets.length);
+ const sections=quotation.quotation_type==='export'?exportSections(quotation):quotation.company_snapshot.terms_template_version===STANDARD_TERMS_VERSION?standardSections(quotation):legacySections(quotation);
+ const cleaned=sections.map(section=>({...section,bullets:section.bullets.map(value=>value.trim()).filter(Boolean)})).filter(section=>section.bullets.length);
+ const lastNumber=cleaned.reduce((maximum,section)=>Math.max(maximum,section.number),0);
+ const custom=(quotation.additional_clauses||[]).map((clause,index)=>({
+  number:lastNumber+index+1,
+  title:clause.title.trim(),
+  bullets:clause.text.split(/\r?\n/).map(value=>value.replace(/^\s*[•*-]\s*/, '').trim()).filter(Boolean)
+ })).filter(section=>section.title&&section.bullets.length);
+ return [...cleaned,...custom];
 }

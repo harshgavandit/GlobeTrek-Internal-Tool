@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FormField, SectionHeader } from '@/components/workspace/primitives';
 import { CustomerSection } from './customer-step';
@@ -16,9 +16,11 @@ import {
   price_lists as PriceList,
   QuotationFormState,
   QuotationItemForm,
+  QuotationType,
 } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { numberToWords } from '@/lib/number-to-words';
+import { isChargeVisible } from '@/lib/quotation-commercial';
 
 interface QuotationWorkspaceProps {
   formState: QuotationFormState;
@@ -28,7 +30,9 @@ interface QuotationWorkspaceProps {
   onSelectCustomer: (customer: Customer) => void;
   onCustomerCreated: (customer: Customer) => void;
   onSelectPriceList: (priceList: PriceList) => Promise<void>;
-  onAddProduct: (product: Product, price: number) => void;
+  onChangePricing: (currency: string, rate: number) => Promise<void>;
+  onChangeQuotationType: (quotationType: QuotationType) => Promise<void>;
+  onAddProduct: (product: Product, price: number, quantity: number, sourcePrice: number) => void;
   onItemChange: (index: number, updates: Partial<QuotationItemForm>) => void;
   onItemRemove: (index: number) => void;
   disabled?: boolean;
@@ -42,6 +46,8 @@ export function QuotationWorkspace({
   onSelectCustomer,
   onCustomerCreated,
   onSelectPriceList,
+  onChangePricing,
+  onChangeQuotationType,
   onAddProduct,
   onItemChange,
   onItemRemove,
@@ -50,10 +56,22 @@ export function QuotationWorkspace({
   const selectedPriceList = priceLists.find(
     (priceList) => priceList.id === formState.price_list_id,
   );
+  const workflowSteps=[
+    {label:'Customer & format',hint:'Who and which template',href:'#quotation-setup',complete:Boolean(formState.customer_id&&formState.price_list_id)},
+    {label:'Add products',hint:'Choose equipment and quantity',href:'#quotation-products',complete:formState.items.length>0},
+    {label:'Review pricing',hint:'Check prices and charges',href:'#quotation-summary',complete:formState.items.length>0&&formState.total_amount>=0},
+    {label:'Preview & save',hint:'Create the official record',href:'#quotation-actions',complete:false}
+  ];
+  const activeStep=Math.min(workflowSteps.findIndex(step=>!step.complete),workflowSteps.length-1);
 
   return (
     <fieldset disabled={disabled} className="min-w-0 pb-16 xl:pb-0">
-      <div className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_.9fr]">
+      <nav aria-label="Quotation progress" className="surface mb-5 overflow-hidden p-2">
+        <ol className="grid gap-1 sm:grid-cols-2 xl:grid-cols-4">
+          {workflowSteps.map((step,index)=><li key={step.label}><a href={step.href} aria-current={index===activeStep?'step':undefined} className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition ${index===activeStep?'bg-blue-50 text-primary ring-1 ring-blue-100':'hover:bg-slate-50'}`}><span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.complete?'bg-emerald-100 text-emerald-700':index===activeStep?'bg-primary text-white':'bg-slate-100 text-slate-500'}`}>{step.complete?<Check className="size-4"/>:index+1}</span><span className="min-w-0"><span className="block text-xs font-semibold">{step.label}</span><span className="mt-0.5 block truncate text-[10px] font-normal text-muted-foreground">{step.hint}</span></span></a></li>)}
+        </ol>
+      </nav>
+      <div id="quotation-setup" className="mb-5 grid scroll-mt-5 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_.9fr]">
         <CustomerSection
           customers={customers}
           selectedCustomerId={formState.customer_id}
@@ -63,7 +81,12 @@ export function QuotationWorkspace({
         <PriceListSection
           priceLists={priceLists}
           selectedPriceListId={formState.price_list_id}
+          quotationType={formState.quotation_type}
+          quotationCurrency={formState.currency}
+          exchangeRate={formState.exchange_rate}
           onSelectPriceList={onSelectPriceList}
+          onChangePricing={onChangePricing}
+          onChangeQuotationType={onChangeQuotationType}
           hasItems={formState.items.length > 0}
         />
         <section className="surface min-w-0 space-y-3 p-4 md:col-span-2 xl:col-span-1">
@@ -93,7 +116,7 @@ export function QuotationWorkspace({
 
       <div className="quote-grid">
         <div className="min-w-0 space-y-4">
-          <section className="surface p-4">
+          <section id="quotation-products" className="surface scroll-mt-5 p-4">
             <SectionHeader
               title="Search & add products"
               description="Find a catalog item, then review its current master price before adding it."
@@ -101,8 +124,10 @@ export function QuotationWorkspace({
             <div className="mt-4">
               <ProductSearchBar
                 selectedPriceListId={formState.price_list_id}
+                quotationCurrency={formState.currency}
+                exchangeRate={formState.exchange_rate}
                 onAddProduct={onAddProduct}
-                excludedProductIds={formState.items.map((item) => item.product_id)}
+                selectedQuantities={Object.fromEntries(formState.items.map((item) => [item.product_id, item.quantity]))}
               />
             </div>
           </section>
@@ -133,7 +158,7 @@ export function QuotationWorkspace({
 
         <aside
           id="quotation-summary"
-          className="quote-summary surface scroll-mt-4 overflow-hidden"
+          className="quote-summary surface scroll-mt-5 overflow-hidden ring-1 ring-blue-50"
         >
           <div className="p-4">
             <SectionHeader title="Quotation summary" />
@@ -150,15 +175,17 @@ export function QuotationWorkspace({
               </strong>
             </div>
             <CommercialChargesForm formState={formState} onChange={updateForm} />
-            <div className="mt-3 flex justify-between text-xs text-muted-foreground">
-              <span>Tax amount ({formState.tax_percent}%)</span>
-              <span className="tabular-nums">
-                {formatCurrency(formState.tax_amount, formState.currency)}
-              </span>
-            </div>
+            {isChargeVisible(formState, 'tax_percent') && (
+              <div className="mt-3 flex justify-between text-xs text-muted-foreground">
+                <span>Tax amount ({formState.tax_percent}%)</span>
+                <span className="tabular-nums">
+                  {formatCurrency(formState.tax_amount, formState.currency)}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="bg-slate-950 p-4 text-white">
+          <div className="bg-gradient-to-br from-slate-950 to-blue-950 p-4 text-white">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">
               Total payable
             </p>

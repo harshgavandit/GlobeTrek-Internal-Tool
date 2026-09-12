@@ -76,6 +76,20 @@ export interface Customer {
 }
 
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
+export type QuotationType = 'indian' | 'export';
+
+export type QuotationChargeField =
+  | 'discount_amount'
+  | 'packaging_charges'
+  | 'freight_charges'
+  | 'insurance_charges'
+  | 'other_charges'
+  | 'tax_percent';
+
+export interface QuotationClause {
+  title: string;
+  text: string;
+}
 
 export interface QuotationItem {
   id: string;
@@ -86,6 +100,7 @@ export interface QuotationItem {
   sku: string;
   model_number?: string;
   master_price: number;
+  source_master_price?: number;
   unit_price: number;
   quantity: number;
   discount_percent: number;
@@ -99,6 +114,7 @@ export interface Quotation {
   discount_amount: number;
   id: string;
   quotation_number: string;
+  quotation_type?: QuotationType;
   financial_year: string;
   sequence_number: number;
   customer_id: string;
@@ -114,6 +130,8 @@ export interface Quotation {
   price_list_id: string;
   price_list_name: string;
   currency: string;
+  price_list_currency?: string;
+  exchange_rate?: number;
   status: QuotationStatus;
   quotation_date: string;
   valid_until: string;
@@ -130,6 +148,8 @@ export interface Quotation {
   warranty_terms: string;
   validity_terms: string;
   freight_terms: string;
+  visible_charges?: QuotationChargeField[];
+  additional_clauses?: QuotationClause[];
   notes?: string;
   created_by_user_id: string;
   created_by_name: string;
@@ -180,6 +200,7 @@ export interface QuotationItemForm {
   sku: string;
   model_number?: string;
   master_price: number;
+  source_master_price?: number;
   unit_price: number;
   quantity: number;
   discount_percent: number;
@@ -190,8 +211,10 @@ export interface QuotationFormState {
   discount_amount?: number;
   revision?: number;
   customer_id: string;
+  quotation_type: QuotationType;
   price_list_id: string;
   currency: string;
+  exchange_rate: number;
   quotation_date: string;
   valid_until: string;
   items: QuotationItemForm[];
@@ -208,6 +231,8 @@ export interface QuotationFormState {
   warranty_terms: string;
   validity_terms: string;
   freight_terms: string;
+  visible_charges?: QuotationChargeField[];
+  additional_clauses?: QuotationClause[];
   customer_reference?: string;
   notes?: string;
 }
