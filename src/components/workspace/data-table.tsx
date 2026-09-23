@@ -7,6 +7,8 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -94,7 +96,7 @@ export function DataTable<T>({
   };
 
   return (
-    <div className="surface overflow-hidden">
+    <div className="surface overflow-hidden" aria-busy={loading}>
       {loading ? (
         <LoadingState label={`Loading ${label.toLowerCase()}`} />
       ) : !data.length ? (
@@ -131,10 +133,10 @@ export function DataTable<T>({
 
           <div className="divide-y md:hidden" role="list" aria-label={`${label} cards`}>
             {visible.map((row) => (
-              <article key={rowKey(row)} role="listitem" className="space-y-3 p-4">
+              <article key={rowKey(row)} role="listitem" className="space-y-3 p-4 even:bg-slate-50/50">
                 {columns.map((column, index) => {
                   const content = column.cell(row);
-                  if (!column.label) {
+                  if (!column.label || column.key === 'actions') {
                     return (
                       <div key={column.key} className="flex justify-end border-t pt-3">
                         {content}
@@ -154,7 +156,7 @@ export function DataTable<T>({
                   return (
                     <div
                       key={column.key}
-                      className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] items-start gap-3 text-xs"
+                      className="grid grid-cols-[minmax(0,6.5rem)_minmax(0,1fr)] items-start gap-3 text-sm"
                     >
                       <span className="text-muted-foreground">{column.label}</span>
                       <div
@@ -201,7 +203,7 @@ export function DataTable<T>({
                       {column.sortValue ? (
                         <button
                           className={cn(
-                            'inline-flex items-center gap-1.5 whitespace-nowrap rounded py-1 hover:text-foreground',
+                            'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded px-1 -mx-1 hover:text-primary',
                             column.align === 'right' && 'justify-end',
                           )}
                           onClick={() => {
@@ -255,50 +257,52 @@ export function DataTable<T>({
             </Table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50/70 px-4 py-3 text-xs text-muted-foreground">
             <p aria-live="polite">
               {(current - 1) * pageSize + 1}–{Math.min(current * pageSize, data.length)} of{' '}
               {data.length.toLocaleString()} {label.toLowerCase()}
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2">
                 Rows
                 <select
                   aria-label={`${label} per page`}
-                  className="select-control h-8 w-16 px-2 text-xs"
+                  className="select-control h-10 w-20 px-2 text-sm"
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
                 >
-                  {[10, 20, 50].map((size) => (
+                  {Array.from(new Set([10, 20, 50, initialPageSize])).sort((a,b)=>a-b).map((size) => (
                     <option key={size}>{size}</option>
                   ))}
                 </select>
               </label>
-              <div className="flex items-center gap-1">
+              <nav aria-label={`${label} pagination`} className="flex items-center gap-1">
+                <Button type="button" aria-label={`First ${label.toLowerCase()} page`} variant="ghost" size="icon" className="size-9" disabled={current === 1} onClick={() => setPage(1)}><ChevronsLeft /></Button>
                 <Button
                   aria-label={`Previous ${label.toLowerCase()} page`}
                   variant="outline"
                   size="icon"
-                  className="size-8"
+                  className="size-9"
                   disabled={current === 1}
                   onClick={() => setPage(current - 1)}
                 >
                   <ChevronLeft />
                 </Button>
                 <span className="px-2 tabular-nums">
-                  {current} / {pageCount}
+                  Page {current} of {pageCount}
                 </span>
                 <Button
                   aria-label={`Next ${label.toLowerCase()} page`}
                   variant="outline"
                   size="icon"
-                  className="size-8"
+                  className="size-9"
                   disabled={current === pageCount}
                   onClick={() => setPage(current + 1)}
                 >
                   <ChevronRight />
                 </Button>
-              </div>
+                <Button type="button" aria-label={`Last ${label.toLowerCase()} page`} variant="ghost" size="icon" className="size-9" disabled={current === pageCount} onClick={() => setPage(pageCount)}><ChevronsRight /></Button>
+              </nav>
             </div>
           </div>
         </>

@@ -28,6 +28,6 @@ export function CommercialChargesForm({formState,onChange}:{formState:QuotationF
    <Input id={`${id}-${field}`} aria-label={ariaLabels[field]} type="number" min="0" max={field==='tax_percent'?100:undefined} step="0.01" value={formState[field]||0} onChange={event=>onChange({[field]:Number(event.target.value)})} className="h-9 w-24 text-right text-xs tabular-nums"/>
    <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground hover:text-destructive" aria-label={`Remove ${QUOTATION_CHARGE_LABELS[field]}`} title={`Remove ${QUOTATION_CHARGE_LABELS[field]}`} onClick={()=>remove(field)}><Trash2 className="size-3.5"/></Button>
   </div>)}
-  {hidden.length>0&&<div className="border-t pt-3"><p className="mb-2 text-[11px] font-medium text-muted-foreground">Add a charge row</p><div className="flex flex-wrap gap-1.5">{hidden.map(field=><Button key={field} type="button" variant="outline" size="sm" className="h-7 px-2 text-[11px]" onClick={()=>restore(field)}><Plus className="mr-1 size-3"/>{QUOTATION_CHARGE_LABELS[field]}</Button>)}</div></div>}
+  {hidden.length>0&&<div className="border-t pt-3"><p className="mb-2 text-[11px] font-medium text-muted-foreground">Add a charge row</p><div className="flex flex-wrap gap-1.5">{hidden.map(field=><Button key={field} type="button" variant="outline" size="sm" className="h-9 px-2.5 text-xs" onClick={()=>restore(field)}><Plus className="mr-1 size-3"/>{QUOTATION_CHARGE_LABELS[field]}</Button>)}</div></div>}
  </div>;
 }

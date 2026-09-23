@@ -107,15 +107,17 @@ export function ProductSearchBar({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="product-search space-y-3">
       <div className="flex flex-wrap gap-2">
-        <div className="min-w-48 flex-1">
+        <div className="min-w-0 basis-full sm:basis-48 flex-1">
           <SearchInput
             ref={input}
             value={query}
             onValueChange={setQuery}
             placeholder="Search product name, SKU, or model…"
             role="combobox"
+            aria-haspopup="grid"
+            aria-autocomplete="list"
             aria-expanded={searchActive && results.length > 0}
             aria-controls={searchActive ? resultListId : undefined}
             aria-activedescendant={results[active] ? `${resultListId}-${active}` : undefined}
@@ -136,7 +138,7 @@ export function ProductSearchBar({
           />
         </div>
         <select
-          className="select-control w-full sm:w-44"
+          className="select-control flex-1 sm:flex-none sm:w-44"
           aria-label="Product category"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
@@ -179,7 +181,7 @@ export function ProductSearchBar({
         />
       ) : (
         <div
-          role="listbox"
+          role="grid"
           id={resultListId}
           aria-label="Product search results"
           className="divide-y overflow-hidden rounded-lg border"
@@ -194,15 +196,15 @@ export function ProductSearchBar({
             return (
               <div
                 key={product.id}
-                role="option"
+                role="row"
                 aria-selected={active === index}
                 id={`${resultListId}-${index}`}
-                className={`flex items-center gap-3 p-3 ${
+                className={`product-result ${
                   active === index ? 'bg-blue-50/60' : 'bg-white'
                 }`}
                 onMouseEnter={() => setActive(index)}
               >
-                <div className="min-w-0 flex-1">
+                <div role="gridcell" className="product-result-name min-w-0">
                   <p className="line-clamp-2 text-[13px] font-medium" title={product.name}>
                     {product.name}
                   </p>
@@ -210,7 +212,7 @@ export function ProductSearchBar({
                     {product.sku} · {product.category?.name || 'Uncategorized'}
                   </p>
                 </div>
-                <div className="shrink-0 text-right">
+                <div role="gridcell" className="product-result-price min-w-0">
                   <p className="text-[11px] text-muted-foreground">Master price</p>
                   <p className="text-xs font-medium tabular-nums">
                     {convertedPrice!==undefined ? formatCurrency(convertedPrice, quotationCurrency) : 'Not priced'}
@@ -221,22 +223,22 @@ export function ProductSearchBar({
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <div className="flex h-8 items-center overflow-hidden rounded-md border bg-white" aria-label={`Quantity of ${product.name} to add`}>
-                    <button type="button" className="flex h-full w-7 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40" disabled={addQuantity <= 1} onClick={() => setQuantity(product.id, addQuantity - 1)} aria-label={`Decrease ${product.name} quantity`}><Minus className="size-3" /></button>
-                    <input type="number" min="1" max="1000000" step="1" value={addQuantity} onChange={(event) => setQuantity(product.id, Number(event.target.value))} className="h-full w-10 border-x bg-transparent text-center text-xs tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label={`${product.name} quantity`} />
-                    <button type="button" className="flex h-full w-7 items-center justify-center text-muted-foreground hover:bg-muted" onClick={() => setQuantity(product.id, addQuantity + 1)} aria-label={`Increase ${product.name} quantity`}><Plus className="size-3" /></button>
+                <div role="gridcell" className="product-result-controls flex flex-wrap items-center justify-end gap-2">
+                  <div className="flex h-10 items-center rounded-md border bg-white" aria-label={`Quantity of ${product.name} to add`}>
+                    <button type="button" className="flex h-full w-9 items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40" disabled={addQuantity <= 1} onClick={() => setQuantity(product.id, addQuantity - 1)} aria-label={`Decrease ${product.name} quantity`}><Minus className="size-3" /></button>
+                    <input type="number" min="1" max="1000000" step="1" value={addQuantity} onChange={(event) => setQuantity(product.id, Number(event.target.value))} className="h-full w-14 border-x bg-transparent text-center text-xs tabular-nums focus-visible:ring-inset [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label={`${product.name} quantity`} />
+                    <button type="button" className="flex h-full w-9 items-center justify-center text-muted-foreground hover:bg-muted" onClick={() => setQuantity(product.id, addQuantity + 1)} aria-label={`Increase ${product.name} quantity`}><Plus className="size-3" /></button>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 px-2"
+                    className="h-10 shrink-0 px-3"
                     aria-label={`Add ${addQuantity} of ${product.name}`}
                     disabled={!price || !selectedPriceListId}
                     onClick={() => add(product)}
                   >
                     <ShoppingCart className="size-3.5" />
-                    <span className="ml-1 hidden lg:inline">Add</span>
+                    <span>Add</span>
                   </Button>
                 </div>
               </div>

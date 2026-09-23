@@ -38,7 +38,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-500 ring-offset-white transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-2 disabled:pointer-events-none">
+      <DialogPrimitive.Close className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-lg text-slate-500 ring-offset-white transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -48,12 +48,12 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-2 text-left pr-5", className)} {...props} />
+  <div className={cn("flex flex-col space-y-2 text-left pr-10", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-wrap justify-end gap-2 border-t border-border/70 pt-4", className)} {...props} />
+  <div className={cn("flex flex-col-reverse gap-2 border-t border-border/70 pt-4 sm:flex-row sm:flex-wrap sm:justify-end", className)} {...props} />
 );
 DialogFooter.displayName = "DialogFooter";
 

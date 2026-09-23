@@ -65,13 +65,13 @@ export function QuotationWorkspace({
   const activeStep=Math.min(workflowSteps.findIndex(step=>!step.complete),workflowSteps.length-1);
 
   return (
-    <fieldset disabled={disabled} className="min-w-0 pb-16 xl:pb-0">
+    <fieldset disabled={disabled} className="min-w-0 pb-24 xl:pb-0">
       <nav aria-label="Quotation progress" className="surface mb-5 overflow-hidden p-2">
         <ol className="grid gap-1 sm:grid-cols-2 xl:grid-cols-4">
-          {workflowSteps.map((step,index)=><li key={step.label}><a href={step.href} aria-current={index===activeStep?'step':undefined} className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition ${index===activeStep?'bg-blue-50 text-primary ring-1 ring-blue-100':'hover:bg-slate-50'}`}><span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.complete?'bg-emerald-100 text-emerald-700':index===activeStep?'bg-primary text-white':'bg-slate-100 text-slate-500'}`}>{step.complete?<Check className="size-4"/>:index+1}</span><span className="min-w-0"><span className="block text-xs font-semibold">{step.label}</span><span className="mt-0.5 block truncate text-[10px] font-normal text-muted-foreground">{step.hint}</span></span></a></li>)}
+          {workflowSteps.map((step,index)=><li key={step.label}><a href={step.href} aria-current={index===activeStep?'step':undefined} className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition ${index===activeStep?'bg-blue-50 text-primary ring-1 ring-blue-100':'hover:bg-slate-50'}`}><span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.complete?'bg-emerald-100 text-emerald-700':index===activeStep?'bg-primary text-white':'bg-slate-100 text-slate-500'}`}>{step.complete?<Check className="size-4"/>:index+1}</span><span className="min-w-0"><span className="block text-xs font-semibold">{step.label}</span><span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">{step.hint}</span></span></a></li>)}
         </ol>
       </nav>
-      <div id="quotation-setup" className="mb-5 grid scroll-mt-5 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_.9fr]">
+      <div id="quotation-setup" className="mb-5 grid scroll-mt-5 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1.1fr_.9fr]">
         <CustomerSection
           customers={customers}
           selectedCustomerId={formState.customer_id}
@@ -91,7 +91,7 @@ export function QuotationWorkspace({
         />
         <section className="surface min-w-0 space-y-3 p-4 md:col-span-2 xl:col-span-1">
           <SectionHeader title="Quotation dates" icon={CalendarRange} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             <FormField label="Quotation date">
               <Input
                 type="date"
@@ -109,7 +109,7 @@ export function QuotationWorkspace({
             </FormField>
           </div>
           <p className="text-xs leading-5 text-muted-foreground">
-            The quotation number is assigned safely when you save.
+            Your quotation reference is created when you save.
           </p>
         </section>
       </div>
@@ -185,21 +185,21 @@ export function QuotationWorkspace({
             )}
           </div>
 
-          <div className="bg-gradient-to-br from-slate-950 to-blue-950 p-4 text-white">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55">
+          <div className="bg-slate-900 p-4 text-white">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
               Total payable
             </p>
             <div className="mt-1 flex items-center justify-between gap-3">
-              <span className="text-sm text-white/75">Grand total</span>
+              <span className="text-sm text-slate-200">Grand total</span>
               <strong
-                className="text-xl tracking-tight tabular-nums"
+                className="min-w-0 break-all text-right text-xl tracking-tight tabular-nums"
                 data-testid="quotation-grand-total"
               >
                 {formatCurrency(formState.total_amount, formState.currency)}
               </strong>
             </div>
             {formState.total_amount > 0 && (
-              <p className="mt-3 text-[11px] leading-relaxed text-white/55">
+              <p className="mt-3 text-[11px] leading-relaxed text-slate-300">
                 {numberToWords(formState.total_amount, formState.currency)}
               </p>
             )}
