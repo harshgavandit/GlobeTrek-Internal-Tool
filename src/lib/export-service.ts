@@ -6,6 +6,7 @@ import { quotationDocument } from './quotation-document';
 import { renderReferenceQuotationPDF } from './quotation-pdf';
 import { quotationBankAccounts, quotationTermSections } from './quotation-terms';
 import { productDescriptionText } from './product-description';
+import { renderQuotationWord } from './quotation-word';
 const itemDescription=(i:Quotation['items'][number])=>productDescriptionText(i.product_name,i.description,i.model_number);
 async function companyLogo(q:Quotation){
  const logo='/brand/globetrek-new-logo.png';
@@ -18,6 +19,7 @@ function textBlocks(text:string,width:number){
  const blocks:string[]=[];for(let n=0;n<lines.length;n+=18)blocks.push(lines.slice(n,n+18).join('\n'));return blocks;
 }
 export const renderPDF=renderReferenceQuotationPDF;
+export const renderWord=renderQuotationWord;
 export async function renderExcel(q:Quotation){
  const m=quotationDocument(q),wb=new ExcelJS.Workbook(),logo=await companyLogo(q);wb.creator='Globetrek Quotation System';wb.created=new Date(q.created_at);wb.modified=new Date(q.updated_at);
  const sheet=wb.addWorksheet('Quotation',{pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0},views:[{showGridLines:false}]});
