@@ -257,7 +257,7 @@ export function DataTable<T>({
             </Table>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-slate-50/70 px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-white px-4 py-2.5 text-xs text-muted-foreground">
             <p aria-live="polite">
               {(current - 1) * pageSize + 1}–{Math.min(current * pageSize, data.length)} of{' '}
               {data.length.toLocaleString()} {label.toLowerCase()}
@@ -267,7 +267,7 @@ export function DataTable<T>({
                 Rows
                 <select
                   aria-label={`${label} per page`}
-                  className="select-control h-10 w-20 px-2 text-sm"
+                  className="select-control h-9 w-20 px-2 text-sm"
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
                 >

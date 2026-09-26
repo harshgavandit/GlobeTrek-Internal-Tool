@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { CalendarRange, Check } from 'lucide-react';
+import { Check, FileText, ArrowUpRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FormField, SectionHeader } from '@/components/workspace/primitives';
 import { CustomerSection } from './customer-step';
@@ -66,161 +66,60 @@ export function QuotationWorkspace({
 
   return (
     <fieldset disabled={disabled} className="min-w-0 pb-24 xl:pb-0">
-      <nav aria-label="Quotation progress" className="surface mb-5 overflow-hidden p-2">
-        <ol className="grid gap-1 sm:grid-cols-2 xl:grid-cols-4">
-          {workflowSteps.map((step,index)=><li key={step.label}><a href={step.href} aria-current={index===activeStep?'step':undefined} className={`flex min-h-14 items-center gap-3 rounded-xl px-3 py-2 transition ${index===activeStep?'bg-blue-50 text-primary ring-1 ring-blue-100':'hover:bg-slate-50'}`}><span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.complete?'bg-emerald-100 text-emerald-700':index===activeStep?'bg-primary text-white':'bg-slate-100 text-slate-500'}`}>{step.complete?<Check className="size-4"/>:index+1}</span><span className="min-w-0"><span className="block text-xs font-semibold">{step.label}</span><span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground">{step.hint}</span></span></a></li>)}
+      <nav aria-label="Quotation progress" className="quote-step-nav">
+        <ol>
+          {workflowSteps.map((step,index)=><li key={step.label}><a href={step.href} aria-current={index===activeStep?'step':undefined} title={step.hint}><span className="quote-step-index">{step.complete?<Check className="size-3 text-emerald-700"/>:index+1}</span><span>{step.label}</span></a></li>)}
         </ol>
       </nav>
-      <div id="quotation-setup" className="mb-5 grid scroll-mt-5 gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1.1fr_.9fr]">
-        <CustomerSection
-          customers={customers}
-          selectedCustomerId={formState.customer_id}
-          onSelectCustomer={onSelectCustomer}
-          onCustomerCreated={onCustomerCreated}
-        />
-        <PriceListSection
-          priceLists={priceLists}
-          selectedPriceListId={formState.price_list_id}
-          quotationType={formState.quotation_type}
-          quotationCurrency={formState.currency}
-          exchangeRate={formState.exchange_rate}
-          onSelectPriceList={onSelectPriceList}
-          onChangePricing={onChangePricing}
-          onChangeQuotationType={onChangeQuotationType}
-          hasItems={formState.items.length > 0}
-        />
-        <section className="surface min-w-0 space-y-3 p-4 md:col-span-2 xl:col-span-1">
-          <SectionHeader title="Quotation dates" icon={CalendarRange} />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-            <FormField label="Quotation date">
-              <Input
-                type="date"
-                value={formState.quotation_date}
-                onChange={(event) => updateForm({ quotation_date: event.target.value })}
-              />
-            </FormField>
-            <FormField label="Valid until">
-              <Input
-                type="date"
-                value={formState.valid_until}
-                min={formState.quotation_date}
-                onChange={(event) => updateForm({ valid_until: event.target.value })}
-              />
-            </FormField>
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Your quotation reference is created when you save.
-          </p>
-        </section>
-      </div>
-
       <div className="quote-grid">
-        <div className="min-w-0 space-y-4">
-          <section id="quotation-products" className="surface scroll-mt-5 p-4">
-            <SectionHeader
-              title="Search & add products"
-              description="Find a catalog item, then review its current master price before adding it."
-            />
-            <div className="mt-4">
-              <ProductSearchBar
-                selectedPriceListId={formState.price_list_id}
-                quotationCurrency={formState.currency}
-                exchangeRate={formState.exchange_rate}
-                onAddProduct={onAddProduct}
-                selectedQuantities={Object.fromEntries(formState.items.map((item) => [item.product_id, item.quantity]))}
-              />
+        <div className="min-w-0 space-y-5">
+          <div className="quote-canvas">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50/60 px-5 py-3">
+              <div className="flex items-center gap-2 text-xs font-medium"><FileText className="size-4 text-primary" aria-hidden/>Quotation details</div>
+              <span className="text-[11px] text-muted-foreground">{formState.quotation_type==='export'?'Export quotation':'Indian quotation'} · {formState.currency}</span>
             </div>
-          </section>
-
-          <section className="surface overflow-hidden">
-            <div className="p-4">
-              <SectionHeader
-                title="Selected products"
-                description="Master prices stay visible while quoted prices remain editable."
-                actions={
-                  <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-                    {formState.items.length} {formState.items.length === 1 ? 'item' : 'items'} ·{' '}
-                    {formState.currency}
-                  </span>
-                }
-              />
-            </div>
-            <QuotationItemsTable
-              items={formState.items}
-              currency={formState.currency}
-              onItemChange={onItemChange}
-              onItemRemove={onItemRemove}
-            />
-          </section>
-
-          <CommercialTermsForm formState={formState} onChange={updateForm} />
-        </div>
-
-        <aside
-          id="quotation-summary"
-          className="quote-summary surface scroll-mt-5 overflow-hidden ring-1 ring-blue-50"
-        >
-          <div className="p-4">
-            <SectionHeader title="Quotation summary" />
-            <p className="mb-4 mt-2 text-xs text-muted-foreground">
-              {selectedPriceList?.name || 'No price list selected'} · {formState.currency}
-            </p>
-            <div className="flex justify-between gap-2 border-t pb-4 pt-4">
-              <span>Subtotal</span>
-              <strong
-                className="font-medium tabular-nums"
-                data-testid="quotation-subtotal"
-              >
-                {formatCurrency(formState.subtotal, formState.currency)}
-              </strong>
-            </div>
-            <CommercialChargesForm formState={formState} onChange={updateForm} />
-            {isChargeVisible(formState, 'tax_percent') && (
-              <div className="mt-3 flex justify-between text-xs text-muted-foreground">
-                <span>Tax amount ({formState.tax_percent}%)</span>
-                <span className="tabular-nums">
-                  {formatCurrency(formState.tax_amount, formState.currency)}
-                </span>
+            <section id="quotation-setup" className="quote-canvas-section scroll-mt-28">
+              <p className="quote-section-label"><span>01</span>Customer & commercial setup</p>
+              <div className="quote-setup-grid">
+                <CustomerSection customers={customers} selectedCustomerId={formState.customer_id} onSelectCustomer={onSelectCustomer} onCustomerCreated={onCustomerCreated}/>
+                <PriceListSection priceLists={priceLists} selectedPriceListId={formState.price_list_id} quotationType={formState.quotation_type} quotationCurrency={formState.currency} exchangeRate={formState.exchange_rate} onSelectPriceList={onSelectPriceList} onChangePricing={onChangePricing} onChangeQuotationType={onChangeQuotationType} hasItems={formState.items.length>0}/>
               </div>
-            )}
+              <div className="mt-5 grid items-end gap-4 border-t pt-4 sm:grid-cols-2">
+                <FormField label="Quotation date"><Input type="date" value={formState.quotation_date} onChange={event=>updateForm({quotation_date:event.target.value})}/></FormField>
+                <FormField label="Valid until"><Input type="date" value={formState.valid_until} min={formState.quotation_date} onChange={event=>updateForm({valid_until:event.target.value})}/></FormField>
+              </div>
+            </section>
+            <section id="quotation-products" className="quote-canvas-section scroll-mt-28">
+              <p className="quote-section-label"><span>02</span>Build your quotation</p>
+              <SectionHeader title="Search & add products" description="Choose equipment, set the quantity, and add it to your quotation."/>
+              <div className="mt-4"><ProductSearchBar selectedPriceListId={formState.price_list_id} quotationCurrency={formState.currency} exchangeRate={formState.exchange_rate} onAddProduct={onAddProduct} selectedQuantities={Object.fromEntries(formState.items.map(item=>[item.product_id,item.quantity]))}/></div>
+            </section>
+            <section>
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <SectionHeader title="Line items" description="Master prices are your reference. Adjust quoted prices for this quotation."/>
+                <span className="rounded-md border bg-slate-50 px-2 py-1 text-xs tabular-nums text-muted-foreground">{formState.items.length} {formState.items.length===1?'item':'items'}</span>
+              </div>
+              <QuotationItemsTable items={formState.items} currency={formState.currency} onItemChange={onItemChange} onItemRemove={onItemRemove}/>
+            </section>
           </div>
-
-          <div className="bg-slate-900 p-4 text-white">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
-              Total payable
-            </p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <span className="text-sm text-slate-200">Grand total</span>
-              <strong
-                className="min-w-0 break-all text-right text-xl tracking-tight tabular-nums"
-                data-testid="quotation-grand-total"
-              >
-                {formatCurrency(formState.total_amount, formState.currency)}
-              </strong>
-            </div>
-            {formState.total_amount > 0 && (
-              <p className="mt-3 text-[11px] leading-relaxed text-slate-300">
-                {numberToWords(formState.total_amount, formState.currency)}
-              </p>
-            )}
+          <CommercialTermsForm formState={formState} onChange={updateForm}/>
+        </div>
+        <aside id="quotation-summary" className="quote-summary surface scroll-mt-28 overflow-hidden">
+          <div className="border-b px-5 py-4"><p className="quote-section-label mb-2"><span>03</span>Review pricing</p><SectionHeader title="Quotation summary"/><p className="mt-1.5 text-xs leading-5 text-muted-foreground">{selectedPriceList?.name||'No price list selected'}</p><span className="mt-3 inline-flex rounded border bg-slate-50 px-2 py-0.5 text-[11px] font-semibold">{formState.currency}</span></div>
+          <div className="p-5">
+            <div className="mb-5 flex justify-between gap-3 border-b pb-4 text-[13px]"><span className="text-muted-foreground">Subtotal</span><strong className="font-semibold tabular-nums" data-testid="quotation-subtotal">{formatCurrency(formState.subtotal,formState.currency)}</strong></div>
+            <CommercialChargesForm formState={formState} onChange={updateForm}/>
+            {isChargeVisible(formState,'tax_percent')&&<div className="mt-4 flex justify-between gap-3 text-xs text-muted-foreground"><span>Tax amount ({formState.tax_percent}%)</span><span className="tabular-nums">{formatCurrency(formState.tax_amount,formState.currency)}</span></div>}
           </div>
+          <div className="quote-summary-total">
+            <p className="text-xs font-medium text-muted-foreground">Grand total</p>
+            <strong className="mt-1 block break-all text-[28px] font-semibold tracking-tight tabular-nums text-slate-900" data-testid="quotation-grand-total">{formatCurrency(formState.total_amount,formState.currency)}</strong>
+            {formState.total_amount>0&&<p className="mt-2 text-[11px] leading-5 text-muted-foreground">{numberToWords(formState.total_amount,formState.currency)}</p>}
+          </div>
+          <div className="border-t p-5"><a href="#quotation-actions" className="flex min-h-9 items-center justify-between gap-2 rounded text-xs font-semibold text-primary">Preview & save quotation<ArrowUpRight className="size-4" aria-hidden/></a><p className="mt-1 text-[11px] leading-5 text-muted-foreground">Review the document before saving. PDF, Excel and Word exports are available from the saved quotation.</p></div>
         </aside>
       </div>
-
-      <div className="quote-mobile-total">
-        <span className="min-w-0 text-xs text-muted-foreground">
-          Grand total
-          <strong className="ml-2 text-base text-foreground tabular-nums">
-            {formatCurrency(formState.total_amount, formState.currency)}
-          </strong>
-        </span>
-        <a
-          href="#quotation-summary"
-          className="shrink-0 text-xs font-medium text-primary"
-        >
-          Review summary ↑
-        </a>
-      </div>
+      <div className="quote-mobile-total"><span className="min-w-0 text-xs text-muted-foreground">Grand total<strong className="ml-2 text-base text-foreground tabular-nums">{formatCurrency(formState.total_amount,formState.currency)}</strong></span><a href="#quotation-summary" className="flex min-h-9 shrink-0 items-center text-xs font-medium text-primary">Review summary ↑</a></div>
     </fieldset>
   );
 }

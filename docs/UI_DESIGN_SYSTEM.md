@@ -6,7 +6,7 @@ The workspace uses the tokens in `src/app/globals.css` and the reusable controls
 
 - Use the neutral workspace background, white surfaces, blue primary actions, and semantic status colors. Avoid decorative gradients on operational screens.
 - Use `PageHeader` for page titles and primary actions, `SectionHeader` for sections, and `FormField` for labeled inputs, help, and validation.
-- Keep body and form text at 14px on desktop and inputs at 16px on small screens. Use 12px for secondary metadata, not primary instructions.
+- Keep body text at 14px and compact desktop controls at 13px; small-screen inputs retain 16px text and touch-friendly heights. Use 11–12px for secondary metadata, not primary instructions.
 - Use the shared spacing scale: 4px increments, 16–24px panel padding, and 20–28px between major sections. Surfaces use subtle borders and shadows.
 
 ## Navigation and tables
@@ -29,3 +29,10 @@ The workspace uses the tokens in `src/app/globals.css` and the reusable controls
 Interface changes must preserve request payloads, server validation, authentication, quotation calculations, and saved snapshots. Use existing callbacks and shared data rather than parallel UI persistence.
 
 Run `npm run check` after a completed change set. Type-check, lint, and build do not establish visual or runtime end-to-end success; verify responsive and assistive-technology behavior separately when permitted.
+
+## September 2026 refinement
+
+- Neutral white navigation, 248px expanded / 72px collapsed sidebar, and a 60px header.
+- Use restrained blue for primary actions; neutral borders and light surfaces organize content without decorative gradients.
+- Keep record filters and tables in a single surface. Preserve mobile card views and accessible labels.
+- The quotation builder uses a unified editing canvas with customer/format setup, product selection, editable items, and a separate pricing summary. The official document preview is not restyled.
