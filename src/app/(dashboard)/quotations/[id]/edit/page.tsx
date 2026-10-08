@@ -29,6 +29,7 @@ export default function EditQuotationPage() {
   const [quotationSettings,setQuotationSettings]=React.useState<CompanySettings|null>(null);
 
   const [formState, setFormState] = React.useState<QuotationFormState>({
+    quotation_number: '',
     customer_id: '',
     quotation_type: 'indian',
     price_list_id: '',
@@ -54,6 +55,7 @@ export default function EditQuotationPage() {
     visible_charges: [...QUOTATION_CHARGE_FIELDS],
     additional_clauses: [],
     customer_reference: '',
+    customer_enquiry_date: '',
     notes: '',
   });
 
@@ -74,6 +76,7 @@ export default function EditQuotationPage() {
         setQuotationSettings(qtn.company_snapshot);
         setFormState({
           revision:qtn.revision,
+          quotation_number:qtn.quotation_number,
           discount_amount:qtn.discount_amount,
           customer_id: qtn.customer_id,
           quotation_type: qtn.quotation_type || 'indian',
@@ -111,6 +114,7 @@ export default function EditQuotationPage() {
           visible_charges: normalizeVisibleCharges(qtn.visible_charges),
           additional_clauses: qtn.additional_clauses || [],
           customer_reference: qtn.customer_reference || '',
+          customer_enquiry_date: qtn.customer_enquiry_date || '',
           notes: qtn.notes || '',
         });
       } else {

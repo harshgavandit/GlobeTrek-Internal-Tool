@@ -18,7 +18,8 @@
     "test:setup": "tsx scripts/setup-acceptance.ts",
     "test:server": "tsx scripts/start-acceptance.ts",
     "test:extended": "tsx scripts/extended-integration.ts",
-    "test:pdf-template": "tsx scripts/pdf-template-test.ts"
+    "test:pdf-template": "tsx scripts/pdf-template-test.ts",
+    "test:quotation-reference": "tsx scripts/verify-quotation-reference.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

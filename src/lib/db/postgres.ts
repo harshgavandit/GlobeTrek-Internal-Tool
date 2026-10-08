@@ -58,7 +58,7 @@ export class ServerDatabaseManager {
  async getQuotations():Promise<Quotation[]>{return (await getPool().query('SELECT snapshot FROM quotations WHERE deleted_at IS NULL ORDER BY created_at DESC')).rows.map(r=>r.snapshot);}
  async getQuotationById(id:string,c:Queryable=getPool()):Promise<Quotation>{const r=(await c.query('SELECT snapshot FROM quotations WHERE id=$1 AND deleted_at IS NULL',[id])).rows[0];if(!r)throw new AppError(404,'Quotation not found');return r.snapshot;}
  async buildQuotation(c:PoolClient,input:unknown,actor:UserProfile,old?:Quotation,duplicate=false,preview=false):Promise<Quotation>{
-  const form=quoteFormSchema.parse(input);const customer=unpack(await required(c,'customers',form.customer_id));const pl=await required(c,'price_lists',form.price_list_id);
+  const parsed=quoteFormSchema.parse(input);const form={...parsed,customer_reference:parsed.customer_reference??old?.customer_reference,customer_enquiry_date:parsed.customer_enquiry_date??old?.customer_enquiry_date};const customer=unpack(await required(c,'customers',form.customer_id));const pl=await required(c,'price_lists',form.price_list_id);
   let exchangeRate:number;
   try{exchangeRate=quotationExchangeRate(pl.currency,form.currency,form.exchange_rate);}catch(error){throw new AppError(400,error instanceof Error?error.message:'Invalid quotation currency conversion');}
   if(form.quotation_type==='export'&&form.currency!=='USD')throw new AppError(400,'Export quotations must use USD pricing');
@@ -81,20 +81,35 @@ export class ServerDatabaseManager {
    if(!exportAccount?.account_no||!exportAccount.ifsc||!(exportAccount.swift||company.bank_swift))throw new AppError(409,'Complete the primary bank account and SWIFT code in Settings before saving an export quotation');
   }
   let numbering=old?{quotation_number:old.quotation_number,financial_year:old.financial_year,sequence_number:old.sequence_number}:{quotation_number:'PREVIEW - NOT SAVED',financial_year:'',sequence_number:0};
-  if((!old||duplicate)&&!preview){const india=new Date(Date.now()+330*60000);const start=india.getUTCFullYear()-(india.getUTCMonth()<3?1:0);const fy=`${start}-${String(start+1).slice(-2)}`;const seq=(await c.query('INSERT INTO quotation_sequences VALUES($1,1) ON CONFLICT(financial_year) DO UPDATE SET sequence_number=quotation_sequences.sequence_number+1 RETURNING sequence_number',[fy])).rows[0].sequence_number;const settings=await this.getSettings(c);numbering={quotation_number:`${settings.quotation_prefix}/${fy}/${String(seq).padStart(4,'0')}`,financial_year:fy,sequence_number:seq};}
-  const customerSnapshot=old && old.customer_id===customer.id ? Object.fromEntries(Object.entries(old).filter(([key])=>key.startsWith('customer_'))) : Object.fromEntries(['name','contact_person','address','city','country','email','phone','tax_number'].map(key=>['customer_'+key,customer[key]]));
+  const requestedNumber=duplicate?'':form.quotation_number?.trim();
+  if(requestedNumber){
+   const conflict=await c.query('SELECT id FROM quotations WHERE lower(quotation_number)=lower($1) AND id<>$2',[requestedNumber,id]);
+   if(conflict.rowCount)throw new AppError(409,'This reference number already exists. Enter a different reference number.');
+   numbering.quotation_number=requestedNumber;
+  }
+  if((!old||duplicate)&&!preview){
+   const india=new Date(Date.now()+330*60000);const start=india.getUTCFullYear()-(india.getUTCMonth()<3?1:0);const fy=`${start}-${String(start+1).slice(-2)}`;const settings=await this.getSettings(c);
+   let seq:number,generatedNumber:string;
+   do{
+    seq=(await c.query('INSERT INTO quotation_sequences VALUES($1,1) ON CONFLICT(financial_year) DO UPDATE SET sequence_number=quotation_sequences.sequence_number+1 RETURNING sequence_number',[fy])).rows[0].sequence_number;
+    generatedNumber=`${settings.quotation_prefix}/${fy}/${String(seq).padStart(4,'0')}`;
+   }while(!requestedNumber&&(await c.query('SELECT 1 FROM quotations WHERE lower(quotation_number)=lower($1)',[generatedNumber])).rowCount);
+   numbering={quotation_number:requestedNumber||generatedNumber,financial_year:fy,sequence_number:seq};
+  }
+  const customerFields=['name','contact_person','address','city','country','email','phone','tax_number'];
+  const customerSnapshot=Object.fromEntries(customerFields.map(key=>['customer_'+key,old && old.customer_id===customer.id ? old[('customer_'+key) as keyof Quotation] : customer[key]]));
   return {...calculated,...customerSnapshot,...numbering,id,exchange_rate:exchangeRate,price_list_currency:pl.currency,items:calculated.items,customer_id:form.customer_id,price_list_name:old && old.price_list_id===pl.id?old.price_list_name:pl.name,company_snapshot:company,status:duplicate?'draft':old?.status||'draft',revision:duplicate?1:(old?.revision||0)+1,created_by_user_id:duplicate?actor.id:old?.created_by_user_id||actor.id,created_by_name:duplicate?actor.full_name:old?.created_by_name||actor.full_name,created_at:duplicate?now:old?.created_at||now,updated_at:now} as Quotation;
  }
  async persistQuote(c:PoolClient,q:Quotation,actor:string,requestId:string,isNew:boolean){
   if(isNew)await c.query('INSERT INTO quotations(id,quotation_number,financial_year,sequence_number,customer_id,price_list_id,created_by_user_id,request_id,status,subtotal,total_amount,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',[q.id,q.quotation_number,q.financial_year,q.sequence_number,q.customer_id,q.price_list_id,q.created_by_user_id,requestId,q.status,q.subtotal,q.total_amount,JSON.stringify(q)]);
-  else {await c.query('UPDATE quotations SET customer_id=$2,price_list_id=$3,status=$4,subtotal=$5,total_amount=$6,snapshot=$7,revision=$8,updated_at=clock_timestamp() WHERE id=$1',[q.id,q.customer_id,q.price_list_id,q.status,q.subtotal,q.total_amount,JSON.stringify(q),q.revision]);await c.query('DELETE FROM quotation_items WHERE quotation_id=$1',[q.id]);}
+  else {await c.query('UPDATE quotations SET customer_id=$2,price_list_id=$3,status=$4,subtotal=$5,total_amount=$6,snapshot=$7,revision=$8,quotation_number=$9,updated_at=clock_timestamp() WHERE id=$1',[q.id,q.customer_id,q.price_list_id,q.status,q.subtotal,q.total_amount,JSON.stringify(q),q.revision,q.quotation_number]);await c.query('DELETE FROM quotation_items WHERE quotation_id=$1',[q.id]);}
   for(const [i,item] of q.items.entries())await c.query('INSERT INTO quotation_items(id,quotation_id,product_id,position,master_price,unit_price,quantity,discount_percent,line_total,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[item.id,q.id,item.product_id,i,item.master_price,item.unit_price,item.quantity,item.discount_percent,item.line_total,JSON.stringify(item)]);
   await c.query('INSERT INTO quotation_revisions(quotation_id,revision,snapshot,changed_by_user_id) VALUES($1,$2,$3,$4)',[q.id,q.revision,JSON.stringify(q),actor]);return q;
  }
  async createQuotation(input:unknown,actor:UserProfile,requestId:string,sourceId?:string){return transaction(async c=>{await catalogLock(c);const prior=(await c.query('SELECT snapshot FROM quotations WHERE created_by_user_id=$1 AND request_id=$2',[actor.id,requestId])).rows[0];if(prior)return prior.snapshot;
   const source=sourceId?await this.getQuotationById(sourceId,c):undefined;
   const validityDays=source?Math.max(0,Math.round((Date.parse(source.valid_until)-Date.parse(source.quotation_date))/86400000)):0;
-  const form=source?{...source,quotation_date:businessDate(),valid_until:businessDate(validityDays)}:input;
+  const form=source?{...source,quotation_number:'',quotation_date:businessDate(),valid_until:businessDate(validityDays)}:input;
   const quote=await this.buildQuotation(c,form,actor,source,!!source);return this.persistQuote(c,quote,actor.id,requestId,true);
  });}
  async previewQuotation(input:unknown,actor:UserProfile){return transaction(async c=>{await catalogLock(c);return this.buildQuotation(c,input,actor,undefined,false,true);});}

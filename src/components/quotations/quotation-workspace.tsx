@@ -21,6 +21,7 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import { numberToWords } from '@/lib/number-to-words';
 import { isChargeVisible } from '@/lib/quotation-commercial';
+import { quotationEnquiryReference } from '@/lib/quotation-reference';
 
 interface QuotationWorkspaceProps {
   formState: QuotationFormState;
@@ -85,8 +86,15 @@ export function QuotationWorkspace({
                 <PriceListSection priceLists={priceLists} selectedPriceListId={formState.price_list_id} quotationType={formState.quotation_type} quotationCurrency={formState.currency} exchangeRate={formState.exchange_rate} onSelectPriceList={onSelectPriceList} onChangePricing={onChangePricing} onChangeQuotationType={onChangeQuotationType} hasItems={formState.items.length>0}/>
               </div>
               <div className="mt-5 grid items-end gap-4 border-t pt-4 sm:grid-cols-2">
+                <FormField label="Reference No" className="sm:col-span-2" hint="Enter your quotation reference number. Leave blank to use automatic numbering for a new quotation or keep the current number when editing."><Input value={formState.quotation_number||''} maxLength={100} onChange={event=>updateForm({quotation_number:event.target.value})} placeholder="Leave blank for automatic numbering"/></FormField>
                 <FormField label="Quotation date"><Input type="date" value={formState.quotation_date} onChange={event=>updateForm({quotation_date:event.target.value})}/></FormField>
                 <FormField label="Valid until"><Input type="date" value={formState.valid_until} min={formState.quotation_date} onChange={event=>updateForm({valid_until:event.target.value})}/></FormField>
+              </div>
+              <div className="mt-5 grid gap-4 border-t pt-4 sm:grid-cols-2">
+                <FormField label="Enquiry reference"><Input value={formState.customer_reference||''} maxLength={5000} onChange={event=>updateForm({customer_reference:event.target.value})} placeholder="Your Email Enquiry, tender, or RFQ reference"/></FormField>
+                <FormField label="Enquiry date"><Input type="date" value={formState.customer_enquiry_date||''} onChange={event=>updateForm({customer_enquiry_date:event.target.value})}/></FormField>
+                <p className="text-xs text-muted-foreground sm:col-span-2">Enter the customer&apos;s enquiry date to include it in the Ref row.</p>
+                {(formState.customer_reference?.trim()||formState.customer_enquiry_date)&&<p className="break-words text-sm font-bold sm:col-span-2" data-testid="enquiry-reference-preview">Ref: {quotationEnquiryReference({...formState,quotation_number:''})}</p>}
               </div>
             </section>
             <section id="quotation-products" className="quote-canvas-section scroll-mt-28">

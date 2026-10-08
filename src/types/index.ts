@@ -127,6 +127,7 @@ export interface Quotation {
   customer_phone?: string;
   customer_tax_number?: string;
   customer_reference?: string;
+  customer_enquiry_date?: string;
   price_list_id: string;
   price_list_name: string;
   currency: string;
@@ -208,6 +209,7 @@ export interface QuotationItemForm {
 }
 
 export interface QuotationFormState {
+  quotation_number?: string;
   discount_amount?: number;
   revision?: number;
   customer_id: string;
@@ -234,5 +236,6 @@ export interface QuotationFormState {
   visible_charges?: QuotationChargeField[];
   additional_clauses?: QuotationClause[];
   customer_reference?: string;
+  customer_enquiry_date?: string;
   notes?: string;
 }

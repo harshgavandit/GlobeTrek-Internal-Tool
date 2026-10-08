@@ -30,6 +30,7 @@ export default function NewQuotationPage() {
   const [loading, setLoading] = React.useState(true);
 
   const [formState, setFormState] = React.useState<QuotationFormState>({
+    quotation_number: '',
     customer_id: '',
     quotation_type: 'indian',
     price_list_id: '',
@@ -54,7 +55,8 @@ export default function NewQuotationPage() {
     freight_terms: '',
     visible_charges: [...QUOTATION_CHARGE_FIELDS],
     additional_clauses: [],
-    customer_reference: '',
+    customer_reference: 'Your Email Enquiry',
+    customer_enquiry_date: '',
     notes: '',
   });
 

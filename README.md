@@ -31,8 +31,14 @@ Login → select/create customer → select price list → search/add products �
 - Saved quotations include customer, product, master/quoted price, company/bank, commercial-term and total snapshots. Changing masters never rewrites these snapshots.
 - Edits require the saved revision. Concurrent edits return HTTP 409 instead of overwriting each other. Product Master and company settings also reject stale edits.
 - Duplicating keeps the source snapshots and validity interval, creates a new draft and assigns a new number. Review old commercial terms and prices before issuing a duplicate.
-- Numbers are allocated transactionally per Indian financial year using a PostgreSQL sequence table and uniqueness constraints. New-save request IDs make retries idempotent.
+- Reference No is editable when creating or editing a quotation. Leave it blank on create for automatic numbering, or on edit to keep the current number. Reference numbers must be unique (case-insensitive), single-line and at most 100 characters. Automatic numbers are allocated transactionally per Indian financial year and skip numbers already entered manually. Duplicating assigns a fresh automatic number. New-save request IDs make retries idempotent.
 - Product/price-list archiving preserves historical references; archived records can be restored. Customers referenced by quotations cannot be deleted. Quotation deletion is an administrator-only soft deletion; revisions remain in PostgreSQL.
+
+## Customer enquiry reference
+
+Quotation setup includes **Enquiry reference** and an optional **Enquiry date**. Enter, for example, `Your Email Enquiry` and `2026-04-14` to display **Ref: Your Email Enquiry Dt. Tuesday, April 14, 2026**. The bold, left-aligned row appears in the preview and saved PDF, Word, and Excel exports. The top Reference No shows the custom number entered in quotation setup, or the automatically generated number if left blank.
+
+The date is independent of the quotation date and is never guessed. Both fields are saved in quotation/revision JSON snapshots and retained when editing or duplicating, so no database migration is needed. Existing quotations retain their reference text; if neither enquiry field is present, the Ref row uses the quotation number. Editing the enquiry fields preserves the historical customer contact snapshot.
 
 ## Calculations
 

@@ -39,6 +39,7 @@ export function fail(error:unknown){
  if(error instanceof ZodError)return NextResponse.json({success:false,error:error.issues.map(i=>`${i.path.join('.')}: ${i.message}`).join('; ')},{status:400});
  if(error instanceof SyntaxError)return NextResponse.json({success:false,error:'Invalid JSON'},{status:400});
  const code=(error as {code?:string})?.code;
+ if(code==='23505'&&(error as {constraint?:string}).constraint==='quotations_quotation_number_key')return NextResponse.json({success:false,error:'This reference number already exists. Enter a different reference number.'},{status:409});
  if(code==='23505')return NextResponse.json({success:false,error:'A record with this name, email or SKU already exists'},{status:409});
  if(code==='23503')return NextResponse.json({success:false,error:'Record is referenced by other data or a referenced record does not exist'},{status:409});
  console.error('Request failed:',error instanceof Error?error.message:'Unknown error');

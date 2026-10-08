@@ -6,6 +6,7 @@ import { Quotation } from '@/types';
 import { quotationBankAccounts, quotationTermSections, QuotationTermSection } from './quotation-terms';
 import { quotationTotalRows } from './quotation-commercial';
 import { productDescriptionDetail } from './product-description';
+import { quotationEnquiryReference } from './quotation-reference';
 
 const NAVY:[number,number,number]=[17,42,70];
 const BLACK:[number,number,number]=[20,20,20];
@@ -34,11 +35,11 @@ async function renderExportQuotationPDF(q:Quotation){
  const logo=await logoData(q),side=38,top=92,pageWidth=612,pageHeight=792,contentWidth=536,bottom=742;
  const exportAmount=(value:number)=>`$${currencyAmount(value,'USD')}`;
  const breakIfNeeded=(y:number,height:number)=>{if(y+height<=bottom)return y;doc.addPage();return top;};
- let y=top+2;doc.setFont('DejaVu','bold');doc.setFontSize(8.2);doc.setTextColor(...BLACK);doc.text(`Reference No- ${q.quotation_number}`,side,y);doc.text(`Date: ${longDate(q.quotation_date).replace(/^(\d{2}) /,'$1 ')}`,pageWidth-side,y,{align:'right'});
- y+=24;doc.setFontSize(9);doc.text('To,',side,y);y+=14;doc.text(q.customer_name,side+3,y);y+=12;doc.setFont('DejaVu','normal');
+ let y=top+2;doc.setFont('DejaVu','bold');doc.setFontSize(8.2);doc.setTextColor(...BLACK);const numberLines=doc.splitTextToSize(`Reference No- ${q.quotation_number}`,contentWidth/2);doc.text(numberLines,side,y);doc.text(`Date: ${longDate(q.quotation_date).replace(/^(\d{2}) /,'$1 ')}`,pageWidth-side,y,{align:'right'});
+ y+=Math.max(24,numberLines.length*10+14);doc.setFontSize(9);doc.text('To,',side,y);y+=14;doc.text(q.customer_name,side+3,y);y+=12;doc.setFont('DejaVu','normal');
  const customer=[q.customer_address,q.customer_city,q.customer_country].filter(Boolean).join(', ');if(customer){const lines=doc.splitTextToSize(customer,330);doc.text(lines,side+3,y);y+=lines.length*10;}
  if(q.customer_phone){doc.text(`Tel No.s : ${q.customer_phone}`,side+3,y);y+=10;}if(q.customer_email){doc.text(`Email : ${q.customer_email}`,side+3,y);y+=10;}
- y+=18;doc.setFont('DejaVu','bold');doc.text(`Ref: ${q.customer_reference?.trim()||q.quotation_number}`,side,y);y+=24;doc.setFont('DejaVu','normal');doc.text('Dear Sir,',side,y);y+=22;doc.text('With reference to above, we are pleased to submit our quotation as follows.',side,y);y+=13;
+ y+=18;doc.setFont('DejaVu','bold');const referenceLines=doc.splitTextToSize(`Ref: ${quotationEnquiryReference(q)}`,contentWidth);for(const line of referenceLines){y=breakIfNeeded(y,12);doc.setDrawColor(...BLACK);doc.setLineWidth(0.15);doc.text(line,side,y,{renderingMode:'fillThenStroke'});y+=12;}y+=12;doc.setFont('DejaVu','normal');doc.text('Dear Sir,',side,y);y+=22;doc.text('With reference to above, we are pleased to submit our quotation as follows.',side,y);y+=13;
  const descriptionWidth=312;const layouts=q.items.map(item=>{doc.setFontSize(7.8);doc.setFont('DejaVu','bold');const title=doc.splitTextToSize(item.product_name,descriptionWidth);doc.setFont('DejaVu','normal');const details=[item.model_number?`Model: ${item.model_number}`:'',productDescriptionDetail(item.product_name,item.description)].filter(Boolean).join('\n');const detail=details?details.split('\n').flatMap(line=>doc.splitTextToSize(line,descriptionWidth)):[];return{title,detail,height:Math.max(26,7+(title.length+detail.length)*9)};});
  autoTable(doc,{startY:y,margin:{left:side,right:side,top,bottom:50},tableWidth:contentWidth,theme:'grid',showHead:'everyPage',rowPageBreak:'avoid',head:[['SR.\nNO.','PRODUCT DESCRIPTION','QTY','UNIT COST EX-WORKS MUMBAI IN USD','TOTAL AMOUNT USD']],body:q.items.map((item,index)=>[String(index+1).padStart(2,'0'),'',quantity(item.quantity),exportAmount(item.unit_price),exportAmount(item.line_total)]),styles:{font:'DejaVu',fontSize:7.8,textColor:BLACK,lineColor:[0,0,0],lineWidth:0.55,cellPadding:3.5,valign:'top',overflow:'linebreak'},headStyles:{fillColor:NAVY,textColor:[255,255,255],font:'DejaVu',fontStyle:'bold',fontSize:7.3,halign:'center',valign:'middle',minCellHeight:38,lineColor:[0,0,0],lineWidth:0.7},columnStyles:{0:{cellWidth:34,halign:'center',fontStyle:'bold'},1:{cellWidth:320},2:{cellWidth:32,halign:'center',fontStyle:'bold'},3:{cellWidth:75,halign:'right',fontStyle:'bold'},4:{cellWidth:75,halign:'right',fontStyle:'bold'}},didParseCell:data=>{if(data.section==='body'&&data.column.index===1){data.cell.text=[''];data.cell.styles.minCellHeight=layouts[data.row.index].height;}},didDrawCell:data=>{if(data.section==='body'&&data.column.index===1){const layout=layouts[data.row.index];let lineY=data.cell.y+10;doc.setFontSize(7.8);doc.setTextColor(...BLACK);doc.setFont('DejaVu','bold');for(const line of layout.title){doc.text(line,data.cell.x+4,lineY);lineY+=9;}doc.setFont('DejaVu','normal');for(const line of layout.detail){doc.text(line,data.cell.x+4,lineY);lineY+=9;}}}});
  const labels:Record<string,string>={'Sub Total':'Sub-Total','Packing Charge':'Packing Apx','Freight Charge':'Freight'};const totals=quotationTotalRows(q).map(([label,value])=>[labels[label]||label,exportAmount(value)]);
@@ -65,16 +66,16 @@ export async function renderReferenceQuotationPDF(q:Quotation){
  const logo=await logoData(q);
  doc.setFont('DejaVu','bold');doc.setFontSize(8.5);doc.setTextColor(...BLACK);
  let y=TOP+2;
- doc.text(`REFERENCE NO- ${q.quotation_number}`,SIDE,y);
+ const numberLines=doc.splitTextToSize(`REFERENCE NO- ${q.quotation_number}`,CONTENT_WIDTH/2);doc.text(numberLines,SIDE,y);
  doc.text(`DATE: ${longDate(q.quotation_date)}`,PAGE_WIDTH-SIDE,y,{align:'right'});
- y+=24;doc.setFontSize(9.5);doc.text('To,',SIDE,y);y+=14;
+ y+=Math.max(24,numberLines.length*10+14);doc.setFontSize(9.5);doc.text('To,',SIDE,y);y+=14;
  doc.setFont('DejaVu','bold');doc.text(q.customer_name.toUpperCase(),SIDE+4,y);y+=13;
  doc.setFont('DejaVu','normal');doc.setFontSize(9);
  const customerAddress=[q.customer_address,q.customer_city,q.customer_country].filter(Boolean).join(', ');
  if(customerAddress){const lines=doc.splitTextToSize(customerAddress,330);doc.text(lines,SIDE+4,y);y+=lines.length*11;}
  if(q.customer_phone){doc.text(`Contact No : ${q.customer_phone}`,SIDE+4,y);y+=11;}
  if(q.customer_email){doc.text(`Email : ${q.customer_email}`,SIDE+4,y);y+=11;}
- y+=20;doc.setFont('DejaVu','bold');doc.text(`Ref: ${q.customer_reference?.trim()||q.quotation_number}`,SIDE,y);y+=27;
+ y+=20;doc.setFont('DejaVu','bold');const referenceLines=doc.splitTextToSize(`Ref: ${quotationEnquiryReference(q)}`,CONTENT_WIDTH);for(const line of referenceLines){y=pageBreakIfNeeded(doc,y,12);doc.setDrawColor(...BLACK);doc.setLineWidth(0.15);doc.text(line,SIDE,y,{renderingMode:'fillThenStroke'});y+=12;}y+=15;
  doc.setFont('DejaVu','normal');doc.text('Dear Sir,',SIDE,y);y+=24;
  doc.text('With reference to above, we are pleased to submit our quotation as follows.',SIDE,y);y+=14;
 

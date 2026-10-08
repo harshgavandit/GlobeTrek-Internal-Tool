@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { quotationEnquiryReference } from '@/lib/quotation-reference';
 import Image from 'next/image';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
@@ -142,8 +143,8 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
             </header>
 
             <div className="mt-3 flex justify-between gap-6 text-[12px] font-bold">
-              <p>{isExport?'Reference No-':'REFERENCE NO-'} {quotation.quotation_number}</p>
-              <p>{isExport?'Date:':'DATE:'} {longDate(quotation.quotation_date)}</p>
+              <p className="min-w-0 break-words">{isExport?'Reference No-':'REFERENCE NO-'} {quotation.quotation_number}</p>
+              <p className="shrink-0">{isExport?'Date:':'DATE:'} {longDate(quotation.quotation_date)}</p>
             </div>
 
             <section className="mt-7 text-[12px] leading-[1.55]">
@@ -154,7 +155,7 @@ export function QuotationPreviewSheet({ quotation, showActions = true }: Quotati
                 {quotation.customer_phone && <p>Contact No : {quotation.customer_phone}</p>}
                 {quotation.customer_email && <p>Email : {quotation.customer_email}</p>}
               </div>
-              <p className="mt-6 font-bold">Ref: {quotation.customer_reference?.trim() || quotation.quotation_number}</p>
+              <p className="mt-6 break-words font-bold">Ref: {quotationEnquiryReference(quotation)}</p>
               <p className="mt-6">Dear Sir,</p>
               <p className="mt-5">With reference to above, we are pleased to submit our quotation as follows.</p>
             </section>

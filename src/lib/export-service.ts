@@ -7,6 +7,7 @@ import { renderReferenceQuotationPDF } from './quotation-pdf';
 import { quotationBankAccounts, quotationTermSections } from './quotation-terms';
 import { productDescriptionText } from './product-description';
 import { renderQuotationWord } from './quotation-word';
+import { quotationEnquiryReference } from './quotation-reference';
 const itemDescription=(i:Quotation['items'][number])=>productDescriptionText(i.product_name,i.description,i.model_number);
 async function companyLogo(q:Quotation){
  const logo='/brand/globetrek-new-logo.png';
@@ -32,6 +33,7 @@ export async function renderExcel(q:Quotation){
  const s=q.company_snapshot;sheet.getCell('D1').value=s.company_name;sheet.getCell('D1').font={bold:true,size:15,color:{argb:'FF0270C7'}};sheet.getCell('D2').value=s.address;sheet.getCell('D3').value=`Mob. ${s.phone}`;sheet.getCell('G3').value=`GSTIN: ${s.gstin}`;sheet.getCell('D4').value=`Email: ${s.email}`;sheet.getCell('G4').value=s.website?`Web: ${s.website}`:'';sheet.getCell('D5').value=s.company_tagline||'';
  for(const address of ['D1','D2','D3','G3','D4','G4','D5'])sheet.getCell(address).alignment={wrapText:true,vertical:'middle'};
  sheet.addRow([]).height=8;heading('PROFORMA QUOTATION');heading('Quotation & Customer Details');pairs([...m.metadata,...m.customer]);
+ textBlocks(`Ref: ${quotationEnquiryReference(q)}`,115).forEach(block=>{const row=sheet.addRow([block]);sheet.mergeCells(row.number,1,row.number,8);row.font={bold:true};row.alignment={wrapText:true,vertical:'top',horizontal:'left'};row.height=Math.max(32,block.split('\n').length*16+16);});
  heading('Equipment & Pricing');const header=sheet.addRow(['#','Description','SKU','Qty',`Master (${q.currency})`,`Quoted (${q.currency})`,'Disc %',`Total (${q.currency})`]);header.font={bold:true};header.height=30;header.alignment={wrapText:true};
  for(const [n,i] of q.items.entries())textBlocks(itemDescription(i),42).forEach((block,index)=>{const r=sheet.addRow(index?['',block,'','','','','','']:[n+1,block,i.sku,i.quantity,i.master_price,i.unit_price,i.discount_percent/100,i.line_total]);r.height=Math.max(36,block.split('\n').length*16+8);r.alignment={wrapText:true,vertical:'top'};[5,6,8].forEach(col=>r.getCell(col).numFmt='#,##0.00');r.getCell(7).numFmt='0.00%';});
  heading('Quotation Total');for(const [key,value] of m.totals){const r=sheet.addRow([key,'','','','','','',value]);sheet.mergeCells(r.number,1,r.number,7);r.height=23;r.getCell(8).numFmt='#,##0.00';if(key==='Grand Total')r.font={bold:true,size:12};}

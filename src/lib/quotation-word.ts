@@ -26,6 +26,7 @@ import { quotationTotalRows } from './quotation-commercial';
 import { numberToWords } from './number-to-words';
 import { productDescriptionDetail } from './product-description';
 import { quotationBankAccounts, quotationTermSections } from './quotation-terms';
+import { quotationEnquiryReference } from './quotation-reference';
 
 const NAVY = '142E4A';
 const BLUE = '0270C7';
@@ -290,7 +291,7 @@ export async function renderQuotationWord(quotation: Quotation) {
     paragraph('To,', { bold: true, before: 130, after: 50 }),
     ...customerLines.map((line, index) => paragraph(line, { bold: index === 0, after: 20 })),
   ];
-  if (quotation.customer_reference) intro.push(paragraph(`Ref: ${quotation.customer_reference}`, { bold: true, before: 110, after: 80 }));
+  intro.push(paragraph(`Ref: ${quotationEnquiryReference(quotation)}`, { bold: true, before: 240, after: 240 }));
   intro.push(paragraph('Dear Sir,', { bold: true, before: 80, after: 80 }));
   intro.push(paragraph('With reference to above, we are pleased to submit our quotation as follows.', { bold: true, after: 150 }));
 
