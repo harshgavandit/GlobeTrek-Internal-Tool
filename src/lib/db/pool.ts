@@ -3,7 +3,7 @@ let instance: Pool | undefined;
 export function getPool() {
  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required; no fallback storage is permitted.');
  if (process.env.NODE_ENV === 'production' && !process.env.APP_URL) throw new Error('APP_URL is required in production.');
- if (!instance) instance = new Pool({connectionString:process.env.DATABASE_URL, max:10, connectionTimeoutMillis:5000,
+ if (!instance) instance = new Pool({connectionString:process.env.DATABASE_URL, max:10, connectionTimeoutMillis:15000,
   ssl:process.env.PGSSL === 'require' ? {rejectUnauthorized:true} : undefined});
  return instance;
 }

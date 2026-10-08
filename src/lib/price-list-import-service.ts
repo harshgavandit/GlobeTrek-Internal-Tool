@@ -17,7 +17,7 @@ export interface PriceListImportSummary {
 type ParsedRow={rowNumber:number;sku?:string;name?:string;model_number?:string;category?:string;description?:string;price?:number};
 
 const normal=(value:string)=>value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'');
-const headerIndex=(headers:string[],...names:string[])=>headers.findIndex(header=>names.includes(normal(header)));
+const headerIndex=(headers:string[],...names:string[])=>headers.findIndex(header=>typeof header==='string'&&names.includes(normal(header)));
 const scalar=(value:unknown)=>typeof value==='string'||typeof value==='number'?String(value).trim():'';
 function parseAmount(value:string){
  const cleaned=value.replace(/(?:inr|usd|eur|gbp|aed|rs\.?|₹|\$|€|£|,|\s)/gi,'');
